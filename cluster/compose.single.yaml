@@ -1,0 +1,23 @@
+# Rivet's single-instance Compose example, pinned to the 3.0.0 release. The config
+# is engine/single.json because the example on the docs site is rejected by this
+# release (see docs/phase1-findings.md).
+#
+#   export RIVET_TOKEN="$(openssl rand -hex 32)"
+#   docker compose -f cluster/compose.single.yaml up -d
+#   cluster/bootstrap.sh
+services:
+  rivet:
+    image: rivetdev/engine:3.0.0@sha256:5ae3c24275eeff87ad1962f4d66fcdb85786fc1397feeeb55afc2ca1f7ccf6f2
+    ports:
+      - "6420:6420"
+    environment:
+      RIVET__AUTH__ADMIN_TOKEN: "${RIVET_TOKEN:?RIVET_TOKEN is required}"
+    volumes:
+      - ./engine/single.json:/etc/rivet/config.json:ro
+      - rivet-log:/var/lib/rivet/log
+      - rivet-objects:/var/lib/rivet/objects
+    restart: unless-stopped
+
+volumes:
+  rivet-log:
+  rivet-objects:

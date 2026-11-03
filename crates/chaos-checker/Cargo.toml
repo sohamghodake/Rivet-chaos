@@ -1,0 +1,11 @@
+[package]
+name = "chaos-checker"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+chaos-core.workspace = true
+
+[dev-dependencies]
+chaos-history.workspace = true

@@ -1,0 +1,12 @@
+[package]
+name = "mock-llm"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+axum.workspace = true
+rand.workspace = true
+serde.workspace = true
+tokio.workspace = true

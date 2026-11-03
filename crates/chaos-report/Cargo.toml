@@ -1,0 +1,12 @@
+[package]
+name = "chaos-report"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+chaos-checker.workspace = true
+chaos-core.workspace = true
+chaos-history.workspace = true
+hdrhistogram.workspace = true
+jiff.workspace = true

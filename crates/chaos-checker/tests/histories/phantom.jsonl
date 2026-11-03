@@ -1,0 +1,5 @@
+{"schema":1,"run":"fixture","scenario":"fixture","seed":0,"started_wall_ms":0,"scenario_toml":"","versions":{},"host":{}}
+{"run":"fixture","seq":1,"proc":0,"type":"invoke","f":"append","actor":"ledger/0","op_id":"p0-000001","value":1,"mono_ns":1000}
+{"run":"fixture","seq":2,"proc":0,"type":"ok","f":"append","actor":"ledger/0","op_id":"p0-000001","value":1,"mono_ns":2000}
+{"run":"fixture","seq":3,"proc":1,"type":"invoke","f":"read","actor":"ledger/0","mono_ns":3000}
+{"run":"fixture","seq":4,"proc":1,"type":"ok","f":"read","actor":"ledger/0","op_ids":["p0-000001","p9-000001"],"mono_ns":4000}

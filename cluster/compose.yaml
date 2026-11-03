@@ -1,0 +1,145 @@
+# Three control plane instances behind HAProxy, an S3 bucket, two nodes, and the
+# services that are never faulted. Three networks, so each partition fault cuts
+# exactly one kind of traffic:
+#
+#   front    load balancer, instances, nodes, sink, mock LLM  (port 6420)
+#   peer     instances only                                   (port 6421)
+#   storage  instances and the bucket                          (port 7070)
+#
+# Start it with cluster/up.sh, which writes cluster/.env and creates the pool.
+name: rivet-chaos
+
+x-engine: &engine
+  image: rivetdev/engine:3.0.0@sha256:5ae3c24275eeff87ad1962f4d66fcdb85786fc1397feeeb55afc2ca1f7ccf6f2
+  environment:
+    RIVET__AUTH__ADMIN_TOKEN: "${RIVET_TOKEN:?run cluster/up.sh to create cluster/.env}"
+    # Without it the S3 client rejects the http:// endpoint before sending
+    # anything, and the engine waits silently until startup times out.
+    AWS_ALLOW_HTTP: "true"
+  depends_on:
+    s3:
+      condition: service_healthy
+  # Rivet's VM guide gives the engine 11 minutes to stop; SIGKILL is the nemesis's job.
+  stop_grace_period: 660s
+  restart: "no"
+
+x-node: &node
+  image: rivet-chaos-workload
+  environment: &node-env
+    RIVET_ENDPOINT: "http://default:${RIVET_TOKEN}@haproxy:6420"
+    RIVET_POOL: default
+    SINK_URL: http://effects-sink:6510
+    LLM_URL: http://mock-llm:6511
+  depends_on: [haproxy, effects-sink, mock-llm]
+  networks: [front]
+  # Each actor gets up to 15 s to save its state, and Compose defaults to 10 s.
+  stop_grace_period: 60s
+  restart: "no"
+
+services:
+  engine-1:
+    <<: *engine
+    volumes:
+      - ./engine/engine-1.json:/etc/rivet/config.json:ro
+      - engine-1-log:/var/lib/rivet/log
+    networks:
+      front: {}
+      peer: { ipv4_address: 10.77.1.11 }
+      storage: {}
+    ports: ["127.0.0.1:7421:6420", "127.0.0.1:7431:6430"]
+
+  engine-2:
+    <<: *engine
+    volumes:
+      - ./engine/engine-2.json:/etc/rivet/config.json:ro
+      - engine-2-log:/var/lib/rivet/log
+    networks:
+      front: {}
+      peer: { ipv4_address: 10.77.1.12 }
+      storage: {}
+    ports: ["127.0.0.1:7422:6420", "127.0.0.1:7432:6430"]
+
+  engine-3:
+    <<: *engine
+    volumes:
+      - ./engine/engine-3.json:/etc/rivet/config.json:ro
+      - engine-3-log:/var/lib/rivet/log
+    networks:
+      front: {}
+      peer: { ipv4_address: 10.77.1.13 }
+      storage: {}
+    ports: ["127.0.0.1:7423:6420", "127.0.0.1:7433:6430"]
+
+  haproxy:
+    image: haproxy:3.2-alpine@sha256:5893840576071e6217cd52ebdcc14f454c6f7a631056fa6f4e0f40d3cac4215b
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on: [engine-1, engine-2, engine-3]
+    networks: [front]
+    ports: ["127.0.0.1:6420:6420"]
+
+  # MinIO no longer publishes images, so the bucket is VersityGW on a local
+  # directory. The `rivet` directory is the bucket.
+  s3:
+    image: versity/versitygw:latest@sha256:89cad13cc981986ee284cbafea4613f9533ce6fd5f37a2c96c4c4fb8adb3a316
+    entrypoint: ["sh", "-c", "mkdir -p /data/rivet && exec versitygw --access rivetchaos --secret rivetchaossecret --port :7070 posix /data"]
+    volumes:
+      - s3-data:/data
+    networks: [storage]
+    ports: ["127.0.0.1:7070:7070"]
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "7070"]
+      interval: 1s
+      retries: 30
+
+  node-a:
+    <<: *node
+    # Only one service builds the shared image, or the builds collide.
+    build:
+      context: ..
+      dockerfile: workload/Dockerfile
+    environment:
+      <<: *node-env
+      NODE_ID: node-a
+
+  node-b:
+    <<: *node
+    environment:
+      <<: *node-env
+      NODE_ID: node-b
+
+  effects-sink:
+    build:
+      context: ..
+      dockerfile: crates/services.Dockerfile
+    image: rivet-chaos-services
+    command: ["effects-sink"]
+    environment:
+      SINK_DB: /data/effects.db
+    volumes:
+      - sink-data:/data
+    networks: [front]
+    ports: ["127.0.0.1:6510:6510"]
+
+  mock-llm:
+    image: rivet-chaos-services
+    depends_on: [effects-sink]
+    command: ["mock-llm"]
+    environment:
+      MOCK_LLM_SEED: "${SEED:-42}"
+    networks: [front]
+    ports: ["127.0.0.1:6511:6511"]
+
+networks:
+  front: {}
+  peer:
+    ipam:
+      config: [{ subnet: 10.77.1.0/24 }]
+  storage: {}
+
+volumes:
+  engine-1-log:
+  engine-2-log:
+  engine-3-log:
+  s3-data:
+  sink-data:

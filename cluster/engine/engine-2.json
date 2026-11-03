@@ -1,0 +1,16 @@
+{
+	"api_peer": { "advertise_address": "10.77.1.12:6421" },
+	"storage": { "log_directory": "/var/lib/rivet/log" },
+	"object_storage": {
+		"primary": {
+			"s3": {
+				"bucket": "rivet",
+				"endpoint": "http://s3:7070",
+				"region": "us-east-1",
+				"access_key_id": "rivetchaos",
+				"secret_access_key": "rivetchaossecret"
+			}
+		}
+	},
+	"telemetry": { "enabled": false }
+}
