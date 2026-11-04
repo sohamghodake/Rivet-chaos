@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use chaos_core::{Op, SinkRecords, Turn};
+use chaos_core::{AlarmRow, Op, SinkRecords, Turn};
 
 use crate::{Call, FaultWindow, InvariantResult, Outcome, Status, secs, status};
 
@@ -18,9 +18,11 @@ const OVERLAP_NS: u64 = 250_000_000;
 const FAULT_MARGIN_NS: i64 = 1_000_000_000;
 /// An alarm is booked about a second (`FOLLOW_UP_MS`) before it is due.
 const BOOKING_LEAD_NS: i64 = 2_000_000_000;
-/// The scheduler keeps millisecond timestamps, so an alarm can fire up to a
-/// millisecond before the nanosecond due time the workflow computed.
-const EARLY_TOLERANCE_NS: u64 = 5_000_000;
+/// The scheduler keeps millisecond wall-clock timestamps, so allow for rounding.
+const EARLY_TOLERANCE_MS: i64 = 5;
+/// An alarm this much ahead of its monotonic due time is worth a note: the
+/// scheduler fires by the wall clock, so a forward wall-clock step does it.
+const MONOTONIC_EARLY_NS: u64 = 5_000_000;
 
 #[derive(Default)]
 struct Session<'a> {
@@ -230,14 +232,15 @@ fn workflow_effects(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], 
 /// when a fault overlapped it, as for any step. Counts finished turns.
 fn alarms(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], sink: &SinkRecords) -> InvariantResult {
     // Per alarm, its firings grouped by the booking they belong to.
-    let mut alarms: BTreeMap<&str, BTreeMap<u64, Vec<u64>>> = BTreeMap::new();
+    let mut alarms: BTreeMap<&str, BTreeMap<u64, Vec<&AlarmRow>>> = BTreeMap::new();
     for row in &sink.alarms {
-        alarms.entry(&row.key).or_default().entry(row.due_mono_ns).or_default().push(row.mono_ns);
+        alarms.entry(&row.key).or_default().entry(row.due_mono_ns).or_default().push(row);
     }
 
     let mut checked = 0;
     let mut unchecked = false;
     let mut rebooked = 0;
+    let mut monotonic_early = 0;
     let mut violations = Vec::new();
     for (actor, session) in sessions {
         let Some(finished) = session.final_turns() else {
@@ -252,8 +255,16 @@ fn alarms(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], sink: &Sin
                 continue;
             };
             for (due, firings) in bookings {
-                for fired in firings.iter().filter(|fired| **fired + EARLY_TOLERANCE_NS < *due) {
-                    violations.push(format!("alarm {key} fired {} early", secs(due - fired)));
+                for fired in firings {
+                    // Rows from before the wall-clock fields existed have zeros there.
+                    if fired.due_ms > 0 && fired.received_ms + EARLY_TOLERANCE_MS < fired.due_ms {
+                        violations.push(format!(
+                            "alarm {key} fired {} ms before its wall-clock due time",
+                            fired.due_ms - fired.received_ms
+                        ));
+                    } else if fired.mono_ns + MONOTONIC_EARLY_NS < *due {
+                        monotonic_early += 1;
+                    }
                 }
                 if firings.len() > 1 {
                     violations.push(format!(
@@ -269,20 +280,27 @@ fn alarms(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], sink: &Sin
                 if fault_between(faults, first - BOOKING_LEAD_NS, last + FAULT_MARGIN_NS).is_some() {
                     rebooked += 1;
                 } else {
+                    let dues: Vec<String> = bookings.keys().map(|due| secs(sink.history_ns(*due))).collect();
                     violations.push(format!(
-                        "alarm {key} was booked {} times with no fault during its booking step",
-                        bookings.len()
+                        "alarm {key} was booked {} times, due at {}, with no fault during its booking step",
+                        bookings.len(),
+                        dues.join(", ")
                     ));
                 }
             }
         }
     }
-    let notes = match rebooked {
-        0 => Vec::new(),
-        count => vec![format!(
-            "{count} alarms were booked twice because a fault interrupted their booking step; each booking fired once."
-        )],
-    };
+    let mut notes = Vec::new();
+    if rebooked > 0 {
+        notes.push(format!(
+            "{rebooked} alarms were booked more than once because a fault interrupted their booking step; each booking fired once."
+        ));
+    }
+    if monotonic_early > 0 {
+        notes.push(format!(
+            "{monotonic_early} alarms fired on time by the wall clock but early by the monotonic clock, as a forward wall-clock adjustment causes."
+        ));
+    }
     InvariantResult {
         id: "I8",
         name: "Alarms",

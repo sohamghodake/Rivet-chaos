@@ -27,6 +27,7 @@ use serde::{Deserialize, de::DeserializeOwned};
 use tokio::time::Instant;
 use tokio_util::sync::CancellationToken;
 
+mod export;
 mod summary;
 
 const PROJECT: &str = "rivet-chaos";
@@ -68,6 +69,13 @@ enum Commands {
     /// Check every run under the given folders again and print one Markdown
     /// table of them, per scenario and per run.
     Summary { dirs: Vec<PathBuf> },
+    /// Check every run under the given folders again and write them as JSON for
+    /// the dashboard.
+    Export {
+        dirs: Vec<PathBuf>,
+        #[arg(long)]
+        out: PathBuf,
+    },
 }
 
 fn main() -> ExitCode {
@@ -82,6 +90,7 @@ fn main() -> ExitCode {
             .and_then(|runtime| runtime.block_on(run(&scenario, seed, keep_cluster, &results))),
         Commands::Report { run_dir } => report(&run_dir),
         Commands::Summary { dirs } => summary::print(&dirs).map(|()| Status::Pass),
+        Commands::Export { dirs, out } => export::write(&dirs, &out).map(|()| Status::Pass),
     };
     match result {
         Ok(Status::Pass) => ExitCode::SUCCESS,

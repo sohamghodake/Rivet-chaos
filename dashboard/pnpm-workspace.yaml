@@ -1,0 +1,5 @@
+# The dashboard is its own pnpm workspace, so its dependencies stay out of the
+# root lockfile that the workload image installs from.
+
+# Runs pnpm scripts on Node 24 without touching the system Node.
+useNodeVersion: 24.22.2

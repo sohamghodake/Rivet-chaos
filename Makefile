@@ -4,11 +4,13 @@ PHASE3_SEEDS ?= 1 2 3 4 5
 PHASE3_SCENARIOS ?= instance-crash instance-down-long instance-pause instance-replace node-crash \
 	node-isolation instance-isolation bucket-outage kill-in-step
 
-.PHONY: test harness up down run report summary phase1 phase2 phase3 local-up local-down
+.PHONY: test harness up down run report summary dashboard-data dashboard phase1 phase2 phase3 local-up local-down
 
 test:
 	cargo test --workspace
 	pnpm --dir workload run check-types
+	pnpm --dir dashboard install --frozen-lockfile --silent
+	pnpm --dir dashboard run check-types
 
 harness:
 	cargo build --release -p chaos-cli
@@ -31,6 +33,15 @@ report: harness
 # make summary [RESULTS=results/phase3]: one table of every run in a folder.
 summary: harness
 	$(HARNESS) summary $(or $(RESULTS),results/phase3)
+
+# The dashboard's data, from every archived run.
+dashboard-data: harness
+	$(HARNESS) export results/phase2 results/phase3 results/probes --out dashboard/public/data
+
+# The dashboard as a static site in dashboard/dist; `pnpm --dir dashboard dev` serves it live.
+dashboard: dashboard-data
+	pnpm --dir dashboard install --frozen-lockfile
+	pnpm --dir dashboard run build
 
 # Phase 2's exit criteria: instance-crash once per seed, carrying on past failures.
 phase2: harness

@@ -1,0 +1,3 @@
+dist/
+# Written by `make dashboard-data` from the archived runs.
+public/data/

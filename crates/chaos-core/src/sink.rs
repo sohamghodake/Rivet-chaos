@@ -24,13 +24,19 @@ pub struct EffectRow {
 }
 
 /// A follow-up alarm, keyed `session/turn`. `due_mono_ns` is when the workflow
-/// asked for it to fire; `mono_ns` is when the sink heard that it did.
+/// asked for it to fire; `mono_ns` is when the sink heard that it did. The
+/// scheduler itself keeps wall-clock time, so the wall-clock pair, `due_ms` and
+/// `received_ms`, is what "never early" is judged by.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AlarmRow {
     pub key: String,
     pub node: String,
     pub due_mono_ns: u64,
     pub mono_ns: u64,
+    #[serde(default)]
+    pub due_ms: i64,
+    #[serde(default)]
+    pub received_ms: i64,
 }
 
 /// A session's heartbeat, stamped by the node when it was taken, so a backlog a

@@ -36,6 +36,17 @@ make run SCENARIO=scenarios/instance-crash.toml SEED=7
 
 The exit code is 0 if every invariant passed, 2 if one failed, 3 if one couldn't be checked, and 1 if the harness itself failed.
 
+## Dashboard
+
+`dashboard/` charts every archived run: the results table per scenario, and for each run its append latency and throughput over time with the fault windows shaded, an outage bar per interrupted actor, and the invariants. Every chart has a table view.
+
+```bash
+make dashboard
+pnpm --dir dashboard preview
+```
+
+`make dashboard` writes the data with `rivet-chaos export` and builds a static site into `dashboard/dist`, which any static host can serve. `pnpm --dir dashboard dev` serves it with live reload.
+
 ## The cluster
 
 | Service | What it is |

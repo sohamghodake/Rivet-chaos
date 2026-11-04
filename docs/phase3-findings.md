@@ -71,3 +71,11 @@ So on a settled cluster, #5957 is intermittent, as the issue says (1 of 4 runs),
 ## Upstream
 
 Drafts are in [upstream/](upstream/README.md): the early-placement issue, the `http://` S3 endpoint issue (confirmed on main), the `rivetkit-client` README PR, and the SlateDB clock issue, which still needs a repro on an ordinary Linux host. The self-hosting docs' config keys were fixed upstream on 3 November.
+
+## Triage so far
+
+Two of the first five `instance-crash` runs failed I8. Both are understood; one points at something real.
+
+**Seed 1: an alarm 53 ms early by the monotonic clock.** RivetKit books `schedule.after` at the wall clock's now plus the delay, and fires when `trigger_at <= now` by the wall clock (`internal_storage/queries.rs`, `TAKE_DUE_SCHEDULES_SQL`), with no tolerance. Firing early by the monotonic clock therefore means the wall clock moved forward in between, which this host's clock adjustments do. I8 now judges "never early" by the wall clock, the scheduler's own contract, and notes monotonic-early alarms instead. Re-checked, seed 1 passes.
+
+**Seed 5: an actor's storage stalled for about three minutes.** Session 8's turn 57 had its alarm booked three times, at 230, 290 and 350 s, with no fault near those times; the first two bookings fired only at 350 s, 119 and 59 s late. node-a's log shows why: three SQLite transactions on that actor each took exactly 60,002 ms and failed (`slow sqlite transaction`, then `sqlite operation failed` on the scheduler's table), so the workflow step retried and booked again each time. The first hung transaction started at about 170 s, 10 s before the second kill at 180 s, and the stall lasted until about 350 s, more than two minutes after that fault healed at 217 s. Around 150 to 160 s, after the first fault had healed, engine-1 logged `served peer channel replies reached their byte cap` and engine-3 `actor did not become ready before the gateway deadline`. To triage once the batch is done: rerun seed 5, find the tablet holding that actor's volume, and line its log up with the stall.

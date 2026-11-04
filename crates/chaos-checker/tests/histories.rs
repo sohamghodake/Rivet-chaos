@@ -198,8 +198,16 @@ fn effect(key: &str, mono_ns: u64) -> EffectRow {
     EffectRow { key: key.into(), node: "node-b".into(), mono_ns }
 }
 
+/// An alarm whose wall clock agrees with its monotonic one.
 fn alarm(key: &str, due_mono_ns: u64, mono_ns: u64) -> AlarmRow {
-    AlarmRow { key: key.into(), node: "node-b".into(), due_mono_ns, mono_ns }
+    AlarmRow {
+        key: key.into(),
+        node: "node-b".into(),
+        due_mono_ns,
+        mono_ns,
+        due_ms: (due_mono_ns / 1_000_000) as i64,
+        received_ms: (mono_ns / 1_000_000) as i64,
+    }
 }
 
 #[test]
@@ -307,7 +315,7 @@ fn missing_early_and_repeated_alarms_fail_i8() {
     assert_eq!(
         violations(&check_sessions(&sink), "I8"),
         [
-            "alarm 0/1 fired 0.1 s early",
+            "alarm 0/1 fired 100 ms before its wall-clock due time",
             "alarm 0/1, booked for 2.7 s, fired 2 times",
             "alarm 0/2 never fired"
         ]
@@ -327,6 +335,22 @@ fn rebooking_is_allowed_only_across_a_fault() {
     sink.alarms.push(alarm("0/1", 2_900_000_000, 2_901_000_000));
     assert_eq!(
         violations(&check_sessions(&sink), "I8"),
-        ["alarm 0/1 was booked 2 times with no fault during its booking step"]
+        ["alarm 0/1 was booked 2 times, due at 2.7 s, 2.9 s, with no fault during its booking step"]
     );
+}
+
+#[test]
+fn alarm_early_only_by_the_monotonic_clock_is_a_note() {
+    // On time by the wall clock the scheduler uses, 50 ms early by the monotonic
+    // one: the wall clock was stepped forward in between.
+    let mut sink = sink();
+    sink.alarms[0] = AlarmRow {
+        mono_ns: 2_650_000_000,
+        received_ms: 2_701,
+        due_ms: 2_700,
+        ..alarm("0/1", 2_700_000_000, 2_650_000_000)
+    };
+    let report = check_sessions(&sink);
+    assert_eq!(status_of(&report, "I8"), Status::Pass);
+    assert_eq!(notes(&report, "I8").len(), 1);
 }

@@ -60,7 +60,7 @@ fn row(run: String, checked: &Checked) -> Row {
 }
 
 /// Run folders: each given folder that holds a history, or else its subfolders that do.
-fn run_dirs(dirs: &[PathBuf]) -> Result<Vec<PathBuf>> {
+pub(crate) fn run_dirs(dirs: &[PathBuf]) -> Result<Vec<PathBuf>> {
     let has_history = |dir: &Path| archived(dir, "history.jsonl").exists();
     let mut runs = Vec::new();
     for dir in dirs {
