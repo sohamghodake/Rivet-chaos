@@ -8,9 +8,9 @@ set -euo pipefail
 cluster="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 env_file="$cluster/.env"
 
-if [[ ! -f "$env_file" ]]; then
-	echo "RIVET_TOKEN=$(openssl rand -hex 32)" >"$env_file"
-fi
+# A fresh admin token for every cluster. Request URLs carry it, so it ends up in
+# archived logs and reports; by then the cluster it opened is gone.
+echo "RIVET_TOKEN=$(openssl rand -hex 32)" >"$env_file"
 # shellcheck source=/dev/null
 source "$env_file"
 

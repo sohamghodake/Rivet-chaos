@@ -109,6 +109,19 @@ fn definitely_not_sent(error: &anyhow::Error) -> bool {
         .any(|cause| cause.downcast_ref::<reqwest::Error>().is_some_and(reqwest::Error::is_connect))
 }
 
+/// An error as the history keeps it, without the admin token request URLs carry.
+fn describe(error: &anyhow::Error) -> String {
+    let text = format!("{error:#}");
+    match text.find("rvt-token=") {
+        None => text,
+        Some(start) => {
+            let value = start + "rvt-token=".len();
+            let end = text[value..].find(|c: char| !c.is_ascii_alphanumeric()).map_or(text.len(), |end| value + end);
+            format!("{}rvt-token=…{}", &text[..start], &text[end..])
+        }
+    }
+}
+
 /// Records `op`, runs `request` with a timeout, and records how it ended.
 /// Nothing is sent until `request` is first polled, after the invoke is written.
 async fn call(
@@ -130,14 +143,14 @@ async fn call(
         Ok(Err(error)) if definitely_not_sent(&error) => (
             Body::Fail {
                 op,
-                error: format!("{error:#}"),
+                error: describe(&error),
             },
             Outcome::Fail,
         ),
         Ok(Err(error)) => (
             Body::Info {
                 op,
-                error: format!("{error:#}"),
+                error: describe(&error),
             },
             Outcome::Info,
         ),
@@ -396,4 +409,16 @@ pub async fn final_reads(
     }
     unread.sort();
     Ok(unread)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn errors_lose_the_token() {
+        let error = anyhow::anyhow!("error sending request for url (http://h/gateway?rvt-key=2&rvt-token=d5515e03&x=1)");
+        assert_eq!(describe(&error), "error sending request for url (http://h/gateway?rvt-key=2&rvt-token=…&x=1)");
+        assert_eq!(describe(&anyhow::anyhow!("timed out")), "timed out");
+    }
 }
