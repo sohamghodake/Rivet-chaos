@@ -1,0 +1,127 @@
+20:39:10  starting a fresh cluster
+ Network rivet-chaos_storage  Creating
+ Network rivet-chaos_storage  Created
+ Network rivet-chaos_front  Creating
+ Network rivet-chaos_front  Created
+ Network rivet-chaos_peer  Creating
+ Network rivet-chaos_peer  Created
+ Volume rivet-chaos_engine-2-log  Creating
+ Volume rivet-chaos_engine-2-log  Created
+ Volume rivet-chaos_s3-data  Creating
+ Volume rivet-chaos_s3-data  Created
+ Volume rivet-chaos_sink-data  Creating
+ Volume rivet-chaos_sink-data  Created
+ Volume rivet-chaos_engine-1-log  Creating
+ Volume rivet-chaos_engine-1-log  Created
+ Volume rivet-chaos_engine-3-log  Creating
+ Volume rivet-chaos_engine-3-log  Created
+ Container rivet-chaos-s3-1  Creating
+ Container rivet-chaos-effects-sink-1  Creating
+ Container rivet-chaos-effects-sink-1  Created
+ Container rivet-chaos-mock-llm-1  Creating
+ Container rivet-chaos-s3-1  Created
+ Container rivet-chaos-engine-3-1  Creating
+ Container rivet-chaos-engine-2-1  Creating
+ Container rivet-chaos-engine-1-1  Creating
+ Container rivet-chaos-mock-llm-1  Created
+ Container rivet-chaos-engine-3-1  Created
+ Container rivet-chaos-engine-1-1  Created
+ Container rivet-chaos-engine-2-1  Created
+ Container rivet-chaos-haproxy-1  Creating
+ Container rivet-chaos-haproxy-1  Created
+ Container rivet-chaos-s3-1  Starting
+ Container rivet-chaos-effects-sink-1  Starting
+ Container rivet-chaos-effects-sink-1  Started
+ Container rivet-chaos-mock-llm-1  Starting
+ Container rivet-chaos-s3-1  Started
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-mock-llm-1  Started
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-2-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-3-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-1-1  Starting
+ Container rivet-chaos-engine-2-1  Started
+ Container rivet-chaos-engine-3-1  Started
+ Container rivet-chaos-engine-1-1  Started
+ Container rivet-chaos-haproxy-1  Starting
+ Container rivet-chaos-haproxy-1  Started
+bootstrap: http://localhost:7421 is healthy
+bootstrap: http://localhost:7422 is healthy
+bootstrap: http://localhost:7423 is healthy
+bootstrap: default pool ready
+ Container rivet-chaos-effects-sink-1  Running
+ Container rivet-chaos-s3-1  Running
+ Container rivet-chaos-mock-llm-1  Running
+ Container rivet-chaos-engine-1-1  Running
+ Container rivet-chaos-engine-3-1  Running
+ Container rivet-chaos-engine-2-1  Running
+ Container rivet-chaos-haproxy-1  Running
+ Container rivet-chaos-node-b-1  Creating
+ Container rivet-chaos-node-a-1  Creating
+ Container rivet-chaos-node-b-1  Created
+ Container rivet-chaos-node-a-1  Created
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-node-a-1  Starting
+ Container rivet-chaos-node-b-1  Starting
+ Container rivet-chaos-node-a-1  Started
+ Container rivet-chaos-node-b-1  Started
+settle: admitted 2 of 3, placed 64 of 64 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 64 of 96 replicas, 64 replacements pending
+settle: admitted 3 of 3, placed 68 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 79 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 88 of 96 replicas, 0 replacements pending
+settle: storage settled: admitted 3 of 3, placed 96 of 96 replicas, 0 replacements pending
+20:40:57  engine image: rivetdev/engine:3.0.0@sha256:5ae3c24275eeff87ad1962f4d66fcdb85786fc1397feeeb55afc2ca1f7ccf6f2
+20:40:57  writing to 20 ledgers until each has answered
+20:41:00  node-a's envoy connection is on engine-1
+20:41:00  node-b's envoy connection is on engine-1
+20:41:00  SIGKILL engine-1 (10.77.1.11), keeping it down for 180 s
+20:41:08  +0 s: 0 of 20 ledgers answered
+20:41:18  +10 s: 7 of 20 ledgers answered
+20:41:28  +20 s: 8 of 20 ledgers answered
+20:41:38  +30 s: 9 of 20 ledgers answered
+20:41:47  +40 s: 20 of 20 ledgers answered
+20:41:52  +49 s: 20 of 20 ledgers answered
+20:41:57  +54 s: 20 of 20 ledgers answered
+20:42:02  +59 s: 20 of 20 ledgers answered
+20:42:07  +64 s: 20 of 20 ledgers answered
+20:42:12  +69 s: 20 of 20 ledgers answered
+20:42:17  +74 s: 20 of 20 ledgers answered
+20:42:22  +79 s: 20 of 20 ledgers answered
+20:42:27  +84 s: 20 of 20 ledgers answered
+20:42:32  +89 s: 20 of 20 ledgers answered
+20:42:37  +94 s: 20 of 20 ledgers answered
+20:42:42  +99 s: 20 of 20 ledgers answered
+20:42:47  +104 s: 20 of 20 ledgers answered
+20:42:53  +109 s: 20 of 20 ledgers answered
+20:42:58  +115 s: 20 of 20 ledgers answered
+20:43:03  +120 s: 20 of 20 ledgers answered
+20:43:08  +125 s: 20 of 20 ledgers answered
+20:43:13  +130 s: 20 of 20 ledgers answered
+20:43:18  +135 s: 20 of 20 ledgers answered
+20:43:23  +140 s: 20 of 20 ledgers answered
+20:43:28  +145 s: 20 of 20 ledgers answered
+20:43:33  +150 s: 20 of 20 ledgers answered
+20:43:38  +155 s: 20 of 20 ledgers answered
+20:43:43  +160 s: 20 of 20 ledgers answered
+20:43:48  +165 s: 20 of 20 ledgers answered
+20:43:53  +170 s: 20 of 20 ledgers answered
+20:43:59  +176 s: 20 of 20 ledgers answered
+20:44:04  starting engine-1 again
+20:44:05  every stuck ledger answered again 0 s after the restart
+
+Ledgers that answered nothing for the whole 180 s outage: 0 of 20 (none)
+Survivors' 'failed to send stop command' lines addressed to the dead engine (10.77.1.11): 20
+Survivors' 'actor did not become ready before the gateway deadline' lines: 0
+Logs: docker compose -p rivet-chaos logs engine-2 engine-3   (cluster/down.sh removes the cluster)
+Not reproduced this time.
+exit 1

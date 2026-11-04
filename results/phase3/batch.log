@@ -1,0 +1,676 @@
+cargo build --release -p chaos-cli
+    Finished `release` profile [optimized] target(s) in 0.27s
+rivet-chaos: run instance-crash-s1-1793826176
+ Network rivet-chaos_peer  Creating
+ Network rivet-chaos_peer  Created
+ Network rivet-chaos_storage  Creating
+ Network rivet-chaos_storage  Created
+ Network rivet-chaos_front  Creating
+ Network rivet-chaos_front  Created
+ Volume rivet-chaos_sink-data  Creating
+ Volume rivet-chaos_sink-data  Created
+ Volume rivet-chaos_engine-1-log  Creating
+ Volume rivet-chaos_engine-1-log  Created
+ Volume rivet-chaos_engine-3-log  Creating
+ Volume rivet-chaos_engine-3-log  Created
+ Volume rivet-chaos_s3-data  Creating
+ Volume rivet-chaos_s3-data  Created
+ Volume rivet-chaos_engine-2-log  Creating
+ Volume rivet-chaos_engine-2-log  Created
+ Container rivet-chaos-s3-1  Creating
+ Container rivet-chaos-effects-sink-1  Creating
+ Container rivet-chaos-effects-sink-1  Created
+ Container rivet-chaos-mock-llm-1  Creating
+ Container rivet-chaos-s3-1  Created
+ Container rivet-chaos-engine-2-1  Creating
+ Container rivet-chaos-engine-1-1  Creating
+ Container rivet-chaos-engine-3-1  Creating
+ Container rivet-chaos-mock-llm-1  Created
+ Container rivet-chaos-engine-3-1  Created
+ Container rivet-chaos-engine-1-1  Created
+ Container rivet-chaos-engine-2-1  Created
+ Container rivet-chaos-haproxy-1  Creating
+ Container rivet-chaos-haproxy-1  Created
+ Container rivet-chaos-s3-1  Starting
+ Container rivet-chaos-effects-sink-1  Starting
+ Container rivet-chaos-s3-1  Started
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-effects-sink-1  Started
+ Container rivet-chaos-mock-llm-1  Starting
+ Container rivet-chaos-mock-llm-1  Started
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-3-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-1-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-2-1  Starting
+ Container rivet-chaos-engine-3-1  Started
+ Container rivet-chaos-engine-2-1  Started
+ Container rivet-chaos-engine-1-1  Started
+ Container rivet-chaos-haproxy-1  Starting
+ Container rivet-chaos-haproxy-1  Started
+bootstrap: http://localhost:7421 is healthy
+bootstrap: http://localhost:7422 is healthy
+bootstrap: http://localhost:7423 is healthy
+bootstrap: default pool ready
+ Container rivet-chaos-s3-1  Running
+ Container rivet-chaos-effects-sink-1  Running
+ Container rivet-chaos-engine-1-1  Running
+ Container rivet-chaos-engine-2-1  Running
+ Container rivet-chaos-engine-3-1  Running
+ Container rivet-chaos-haproxy-1  Running
+ Container rivet-chaos-mock-llm-1  Running
+ Container rivet-chaos-node-a-1  Creating
+ Container rivet-chaos-node-b-1  Creating
+ Container rivet-chaos-node-b-1  Created
+ Container rivet-chaos-node-a-1  Created
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-node-b-1  Starting
+ Container rivet-chaos-node-a-1  Starting
+ Container rivet-chaos-node-b-1  Started
+ Container rivet-chaos-node-a-1  Started
+settle: admitted 1 of 3, placed 32 of 32 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 32 of 96 replicas, 32 replacements pending
+settle: admitted 3 of 3, placed 35 of 96 replicas, 6 replacements pending
+settle: admitted 3 of 3, placed 45 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 58 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 69 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 80 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 90 of 96 replicas, 0 replacements pending
+settle: storage settled: admitted 3 of 3, placed 96 of 96 replicas, 0 replacements pending
+rivet-chaos: every actor answered; starting the clock
+rivet-chaos: 2 faults planned over 300 s
+rivet-chaos: load stopped, waiting 30 s before the final reads
+rivet-chaos: I1 Durability: Pass (24365 checked, 0 violations)
+rivet-chaos: I2 No phantom writes: Pass (24427 checked, 0 violations)
+rivet-chaos: I3 No duplicates: Pass (24427 checked, 0 violations)
+rivet-chaos: I4 Real-time visibility: Pass (2690 checked, 0 violations)
+rivet-chaos: I5 Recovery: Pass (92 checked, 0 violations)
+rivet-chaos: I6 Single activation: Pass (10 checked, 0 violations)
+rivet-chaos: I7 Workflow effects: Pass (1628 checked, 0 violations)
+rivet-chaos: I8 Alarms: Fail (843 checked, 1 violations)
+ Container rivet-chaos-node-b-1  Stopping
+ Container rivet-chaos-node-a-1  Stopping
+ Container rivet-chaos-node-b-1  Stopped
+ Container rivet-chaos-node-b-1  Removing
+ Container rivet-chaos-node-b-1  Removed
+ Container rivet-chaos-node-a-1  Stopped
+ Container rivet-chaos-node-a-1  Removing
+ Container rivet-chaos-node-a-1  Removed
+ Container rivet-chaos-mock-llm-1  Stopping
+ Container rivet-chaos-haproxy-1  Stopping
+ Container rivet-chaos-haproxy-1  Stopped
+ Container rivet-chaos-haproxy-1  Removing
+ Container rivet-chaos-haproxy-1  Removed
+ Container rivet-chaos-engine-1-1  Stopping
+ Container rivet-chaos-engine-3-1  Stopping
+ Container rivet-chaos-engine-2-1  Stopping
+ Container rivet-chaos-engine-3-1  Stopped
+ Container rivet-chaos-engine-3-1  Removing
+ Container rivet-chaos-engine-3-1  Removed
+ Container rivet-chaos-mock-llm-1  Stopped
+ Container rivet-chaos-mock-llm-1  Removing
+ Container rivet-chaos-mock-llm-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopping
+ Container rivet-chaos-engine-1-1  Stopped
+ Container rivet-chaos-engine-1-1  Removing
+ Container rivet-chaos-engine-1-1  Removed
+ Container rivet-chaos-engine-2-1  Stopped
+ Container rivet-chaos-engine-2-1  Removing
+ Container rivet-chaos-engine-2-1  Removed
+ Container rivet-chaos-s3-1  Stopping
+ Container rivet-chaos-s3-1  Stopped
+ Container rivet-chaos-s3-1  Removing
+ Container rivet-chaos-s3-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopped
+ Container rivet-chaos-effects-sink-1  Removing
+ Container rivet-chaos-effects-sink-1  Removed
+ Volume rivet-chaos_s3-data  Removing
+ Volume rivet-chaos_sink-data  Removing
+ Network rivet-chaos_peer  Removing
+ Network rivet-chaos_storage  Removing
+ Volume rivet-chaos_engine-1-log  Removing
+ Volume rivet-chaos_engine-3-log  Removing
+ Network rivet-chaos_front  Removing
+ Volume rivet-chaos_engine-2-log  Removing
+ Network rivet-chaos_peer  Removed
+ Volume rivet-chaos_s3-data  Removed
+ Volume rivet-chaos_sink-data  Removed
+ Volume rivet-chaos_engine-1-log  Removed
+ Network rivet-chaos_storage  Removed
+ Volume rivet-chaos_engine-2-log  Removed
+ Volume rivet-chaos_engine-3-log  Removed
+ Network rivet-chaos_front  Removed
+rivet-chaos: report at results/phase3/instance-crash-s1-1793826176/report.md
+rivet-chaos: run instance-crash-s2-1793826661
+ Network rivet-chaos_peer  Creating
+ Network rivet-chaos_peer  Created
+ Network rivet-chaos_front  Creating
+ Network rivet-chaos_front  Created
+ Network rivet-chaos_storage  Creating
+ Network rivet-chaos_storage  Created
+ Volume rivet-chaos_engine-2-log  Creating
+ Volume rivet-chaos_engine-2-log  Created
+ Volume rivet-chaos_sink-data  Creating
+ Volume rivet-chaos_sink-data  Created
+ Volume rivet-chaos_s3-data  Creating
+ Volume rivet-chaos_s3-data  Created
+ Volume rivet-chaos_engine-3-log  Creating
+ Volume rivet-chaos_engine-3-log  Created
+ Volume rivet-chaos_engine-1-log  Creating
+ Volume rivet-chaos_engine-1-log  Created
+ Container rivet-chaos-s3-1  Creating
+ Container rivet-chaos-effects-sink-1  Creating
+ Container rivet-chaos-effects-sink-1  Created
+ Container rivet-chaos-mock-llm-1  Creating
+ Container rivet-chaos-s3-1  Created
+ Container rivet-chaos-engine-2-1  Creating
+ Container rivet-chaos-engine-3-1  Creating
+ Container rivet-chaos-engine-1-1  Creating
+ Container rivet-chaos-mock-llm-1  Created
+ Container rivet-chaos-engine-3-1  Created
+ Container rivet-chaos-engine-2-1  Created
+ Container rivet-chaos-engine-1-1  Created
+ Container rivet-chaos-haproxy-1  Creating
+ Container rivet-chaos-haproxy-1  Created
+ Container rivet-chaos-s3-1  Starting
+ Container rivet-chaos-effects-sink-1  Starting
+ Container rivet-chaos-s3-1  Started
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-effects-sink-1  Started
+ Container rivet-chaos-mock-llm-1  Starting
+ Container rivet-chaos-mock-llm-1  Started
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-3-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-2-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-1-1  Starting
+ Container rivet-chaos-engine-2-1  Started
+ Container rivet-chaos-engine-3-1  Started
+ Container rivet-chaos-engine-1-1  Started
+ Container rivet-chaos-haproxy-1  Starting
+ Container rivet-chaos-haproxy-1  Started
+bootstrap: http://localhost:7421 is healthy
+bootstrap: http://localhost:7422 is healthy
+bootstrap: http://localhost:7423 is healthy
+bootstrap: default pool ready
+ Container rivet-chaos-effects-sink-1  Running
+ Container rivet-chaos-s3-1  Running
+ Container rivet-chaos-engine-2-1  Running
+ Container rivet-chaos-mock-llm-1  Running
+ Container rivet-chaos-engine-1-1  Running
+ Container rivet-chaos-engine-3-1  Running
+ Container rivet-chaos-haproxy-1  Running
+ Container rivet-chaos-node-a-1  Creating
+ Container rivet-chaos-node-b-1  Creating
+ Container rivet-chaos-node-a-1  Created
+ Container rivet-chaos-node-b-1  Created
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-node-b-1  Starting
+ Container rivet-chaos-node-a-1  Starting
+ Container rivet-chaos-node-a-1  Started
+ Container rivet-chaos-node-b-1  Started
+settle: admitted 2 of 3, placed 64 of 64 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 64 of 96 replicas, 64 replacements pending
+settle: admitted 3 of 3, placed 67 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 77 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 91 of 96 replicas, 0 replacements pending
+settle: storage settled: admitted 3 of 3, placed 96 of 96 replicas, 0 replacements pending
+rivet-chaos: every actor answered; starting the clock
+rivet-chaos: 2 faults planned over 300 s
+rivet-chaos: load stopped, waiting 30 s before the final reads
+rivet-chaos: I1 Durability: Pass (25291 checked, 0 violations)
+rivet-chaos: I2 No phantom writes: Pass (25314 checked, 0 violations)
+rivet-chaos: I3 No duplicates: Pass (25314 checked, 0 violations)
+rivet-chaos: I4 Real-time visibility: Pass (2866 checked, 0 violations)
+rivet-chaos: I5 Recovery: Pass (39 checked, 0 violations)
+rivet-chaos: I6 Single activation: Pass (10 checked, 0 violations)
+rivet-chaos: I7 Workflow effects: Pass (1880 checked, 0 violations)
+rivet-chaos: I8 Alarms: Pass (956 checked, 0 violations)
+ Container rivet-chaos-node-b-1  Stopping
+ Container rivet-chaos-node-a-1  Stopping
+ Container rivet-chaos-node-a-1  Stopped
+ Container rivet-chaos-node-a-1  Removing
+ Container rivet-chaos-node-b-1  Stopped
+ Container rivet-chaos-node-b-1  Removing
+ Container rivet-chaos-node-a-1  Removed
+ Container rivet-chaos-node-b-1  Removed
+ Container rivet-chaos-haproxy-1  Stopping
+ Container rivet-chaos-mock-llm-1  Stopping
+ Container rivet-chaos-haproxy-1  Stopped
+ Container rivet-chaos-haproxy-1  Removing
+ Container rivet-chaos-haproxy-1  Removed
+ Container rivet-chaos-engine-1-1  Stopping
+ Container rivet-chaos-engine-2-1  Stopping
+ Container rivet-chaos-engine-3-1  Stopping
+ Container rivet-chaos-mock-llm-1  Stopped
+ Container rivet-chaos-mock-llm-1  Removing
+ Container rivet-chaos-mock-llm-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopping
+ Container rivet-chaos-engine-3-1  Stopped
+ Container rivet-chaos-engine-3-1  Removing
+ Container rivet-chaos-engine-3-1  Removed
+ Container rivet-chaos-engine-2-1  Stopped
+ Container rivet-chaos-engine-2-1  Removing
+ Container rivet-chaos-engine-2-1  Removed
+ Container rivet-chaos-engine-1-1  Stopped
+ Container rivet-chaos-engine-1-1  Removing
+ Container rivet-chaos-engine-1-1  Removed
+ Container rivet-chaos-s3-1  Stopping
+ Container rivet-chaos-s3-1  Stopped
+ Container rivet-chaos-s3-1  Removing
+ Container rivet-chaos-s3-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopped
+ Container rivet-chaos-effects-sink-1  Removing
+ Container rivet-chaos-effects-sink-1  Removed
+ Volume rivet-chaos_sink-data  Removing
+ Volume rivet-chaos_s3-data  Removing
+ Network rivet-chaos_storage  Removing
+ Volume rivet-chaos_engine-3-log  Removing
+ Volume rivet-chaos_engine-2-log  Removing
+ Network rivet-chaos_front  Removing
+ Network rivet-chaos_peer  Removing
+ Volume rivet-chaos_engine-1-log  Removing
+ Volume rivet-chaos_sink-data  Removed
+ Network rivet-chaos_storage  Removed
+ Network rivet-chaos_front  Removed
+ Volume rivet-chaos_s3-data  Removed
+ Network rivet-chaos_peer  Removed
+ Volume rivet-chaos_engine-3-log  Removed
+ Volume rivet-chaos_engine-2-log  Removed
+ Volume rivet-chaos_engine-1-log  Removed
+rivet-chaos: report at results/phase3/instance-crash-s2-1793826661/report.md
+rivet-chaos: run instance-crash-s3-1793827143
+ Network rivet-chaos_storage  Creating
+ Network rivet-chaos_storage  Created
+ Network rivet-chaos_front  Creating
+ Network rivet-chaos_front  Created
+ Network rivet-chaos_peer  Creating
+ Network rivet-chaos_peer  Created
+ Volume rivet-chaos_sink-data  Creating
+ Volume rivet-chaos_sink-data  Created
+ Volume rivet-chaos_engine-1-log  Creating
+ Volume rivet-chaos_engine-1-log  Created
+ Volume rivet-chaos_engine-3-log  Creating
+ Volume rivet-chaos_engine-3-log  Created
+ Volume rivet-chaos_s3-data  Creating
+ Volume rivet-chaos_s3-data  Created
+ Volume rivet-chaos_engine-2-log  Creating
+ Volume rivet-chaos_engine-2-log  Created
+ Container rivet-chaos-effects-sink-1  Creating
+ Container rivet-chaos-s3-1  Creating
+ Container rivet-chaos-s3-1  Created
+ Container rivet-chaos-engine-1-1  Creating
+ Container rivet-chaos-engine-2-1  Creating
+ Container rivet-chaos-engine-3-1  Creating
+ Container rivet-chaos-effects-sink-1  Created
+ Container rivet-chaos-mock-llm-1  Creating
+ Container rivet-chaos-mock-llm-1  Created
+ Container rivet-chaos-engine-3-1  Created
+ Container rivet-chaos-engine-1-1  Created
+ Container rivet-chaos-engine-2-1  Created
+ Container rivet-chaos-haproxy-1  Creating
+ Container rivet-chaos-haproxy-1  Created
+ Container rivet-chaos-s3-1  Starting
+ Container rivet-chaos-effects-sink-1  Starting
+ Container rivet-chaos-s3-1  Started
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-effects-sink-1  Started
+ Container rivet-chaos-mock-llm-1  Starting
+ Container rivet-chaos-mock-llm-1  Started
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-3-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-2-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-1-1  Starting
+ Container rivet-chaos-engine-2-1  Started
+ Container rivet-chaos-engine-1-1  Started
+ Container rivet-chaos-engine-3-1  Started
+ Container rivet-chaos-haproxy-1  Starting
+ Container rivet-chaos-haproxy-1  Started
+bootstrap: http://localhost:7421 is healthy
+bootstrap: http://localhost:7422 is healthy
+bootstrap: http://localhost:7423 is healthy
+bootstrap: default pool ready
+ Container rivet-chaos-effects-sink-1  Running
+ Container rivet-chaos-s3-1  Running
+ Container rivet-chaos-engine-3-1  Running
+ Container rivet-chaos-mock-llm-1  Running
+ Container rivet-chaos-engine-1-1  Running
+ Container rivet-chaos-engine-2-1  Running
+ Container rivet-chaos-haproxy-1  Running
+ Container rivet-chaos-node-b-1  Creating
+ Container rivet-chaos-node-a-1  Creating
+ Container rivet-chaos-node-b-1  Created
+ Container rivet-chaos-node-a-1  Created
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-node-a-1  Starting
+ Container rivet-chaos-node-b-1  Starting
+ Container rivet-chaos-node-a-1  Started
+ Container rivet-chaos-node-b-1  Started
+settle: admitted 1 of 3, placed 32 of 32 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 32 of 96 replicas, 32 replacements pending
+settle: admitted 3 of 3, placed 33 of 96 replicas, 6 replacements pending
+settle: admitted 3 of 3, placed 41 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 52 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 63 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 71 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 81 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 89 of 96 replicas, 0 replacements pending
+settle: storage settled: admitted 3 of 3, placed 96 of 96 replicas, 0 replacements pending
+rivet-chaos: every actor answered; starting the clock
+rivet-chaos: 2 faults planned over 300 s
+rivet-chaos: load stopped, waiting 30 s before the final reads
+rivet-chaos: I1 Durability: Pass (24173 checked, 0 violations)
+rivet-chaos: I2 No phantom writes: Pass (24228 checked, 0 violations)
+rivet-chaos: I3 No duplicates: Pass (24228 checked, 0 violations)
+rivet-chaos: I4 Real-time visibility: Pass (2704 checked, 0 violations)
+rivet-chaos: I5 Recovery: Pass (92 checked, 0 violations)
+rivet-chaos: I6 Single activation: Pass (10 checked, 0 violations)
+rivet-chaos: I7 Workflow effects: Pass (1680 checked, 0 violations)
+rivet-chaos: I8 Alarms: Pass (858 checked, 0 violations)
+ Container rivet-chaos-node-a-1  Stopping
+ Container rivet-chaos-node-b-1  Stopping
+ Container rivet-chaos-node-a-1  Stopped
+ Container rivet-chaos-node-a-1  Removing
+ Container rivet-chaos-node-a-1  Removed
+ Container rivet-chaos-node-b-1  Stopped
+ Container rivet-chaos-node-b-1  Removing
+ Container rivet-chaos-node-b-1  Removed
+ Container rivet-chaos-haproxy-1  Stopping
+ Container rivet-chaos-mock-llm-1  Stopping
+ Container rivet-chaos-haproxy-1  Stopped
+ Container rivet-chaos-haproxy-1  Removing
+ Container rivet-chaos-haproxy-1  Removed
+ Container rivet-chaos-engine-2-1  Stopping
+ Container rivet-chaos-engine-3-1  Stopping
+ Container rivet-chaos-engine-1-1  Stopping
+ Container rivet-chaos-mock-llm-1  Stopped
+ Container rivet-chaos-mock-llm-1  Removing
+ Container rivet-chaos-mock-llm-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopping
+ Container rivet-chaos-engine-2-1  Stopped
+ Container rivet-chaos-engine-2-1  Removing
+ Container rivet-chaos-engine-2-1  Removed
+ Container rivet-chaos-engine-1-1  Stopped
+ Container rivet-chaos-engine-1-1  Removing
+ Container rivet-chaos-engine-1-1  Removed
+ Container rivet-chaos-engine-3-1  Stopped
+ Container rivet-chaos-engine-3-1  Removing
+ Container rivet-chaos-engine-3-1  Removed
+ Container rivet-chaos-s3-1  Stopping
+ Container rivet-chaos-s3-1  Stopped
+ Container rivet-chaos-s3-1  Removing
+ Container rivet-chaos-s3-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopped
+ Container rivet-chaos-effects-sink-1  Removing
+ Container rivet-chaos-effects-sink-1  Removed
+ Volume rivet-chaos_s3-data  Removing
+ Network rivet-chaos_front  Removing
+ Network rivet-chaos_storage  Removing
+ Volume rivet-chaos_sink-data  Removing
+ Volume rivet-chaos_engine-1-log  Removing
+ Network rivet-chaos_peer  Removing
+ Volume rivet-chaos_engine-3-log  Removing
+ Volume rivet-chaos_engine-2-log  Removing
+ Network rivet-chaos_front  Removed
+ Volume rivet-chaos_s3-data  Removed
+ Volume rivet-chaos_sink-data  Removed
+ Network rivet-chaos_storage  Removed
+ Volume rivet-chaos_engine-1-log  Removed
+ Volume rivet-chaos_engine-3-log  Removed
+ Network rivet-chaos_peer  Removed
+ Volume rivet-chaos_engine-2-log  Removed
+rivet-chaos: report at results/phase3/instance-crash-s3-1793827143/report.md
+rivet-chaos: run instance-crash-s4-1793827631
+ Network rivet-chaos_front  Creating
+ Network rivet-chaos_front  Created
+ Network rivet-chaos_storage  Creating
+ Network rivet-chaos_storage  Created
+ Network rivet-chaos_peer  Creating
+ Network rivet-chaos_peer  Created
+ Volume rivet-chaos_s3-data  Creating
+ Volume rivet-chaos_s3-data  Created
+ Volume rivet-chaos_engine-3-log  Creating
+ Volume rivet-chaos_engine-3-log  Created
+ Volume rivet-chaos_engine-2-log  Creating
+ Volume rivet-chaos_engine-2-log  Created
+ Volume rivet-chaos_engine-1-log  Creating
+ Volume rivet-chaos_engine-1-log  Created
+ Volume rivet-chaos_sink-data  Creating
+ Volume rivet-chaos_sink-data  Created
+ Container rivet-chaos-effects-sink-1  Creating
+ Container rivet-chaos-s3-1  Creating
+ Container rivet-chaos-s3-1  Created
+ Container rivet-chaos-engine-1-1  Creating
+ Container rivet-chaos-engine-3-1  Creating
+ Container rivet-chaos-engine-2-1  Creating
+ Container rivet-chaos-effects-sink-1  Created
+ Container rivet-chaos-mock-llm-1  Creating
+ Container rivet-chaos-mock-llm-1  Created
+ Container rivet-chaos-engine-1-1  Created
+ Container rivet-chaos-engine-3-1  Created
+ Container rivet-chaos-engine-2-1  Created
+ Container rivet-chaos-haproxy-1  Creating
+ Container rivet-chaos-haproxy-1  Created
+ Container rivet-chaos-effects-sink-1  Starting
+ Container rivet-chaos-s3-1  Starting
+ Container rivet-chaos-s3-1  Started
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-effects-sink-1  Started
+ Container rivet-chaos-mock-llm-1  Starting
+ Container rivet-chaos-mock-llm-1  Started
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-1-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-2-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-3-1  Starting
+ Container rivet-chaos-engine-1-1  Started
+ Container rivet-chaos-engine-2-1  Started
+ Container rivet-chaos-engine-3-1  Started
+ Container rivet-chaos-haproxy-1  Starting
+ Container rivet-chaos-haproxy-1  Started
+bootstrap: http://localhost:7421 is healthy
+bootstrap: http://localhost:7422 is healthy
+bootstrap: http://localhost:7423 is healthy
+bootstrap: default pool ready
+ Container rivet-chaos-effects-sink-1  Running
+ Container rivet-chaos-s3-1  Running
+ Container rivet-chaos-mock-llm-1  Running
+ Container rivet-chaos-engine-2-1  Running
+ Container rivet-chaos-engine-3-1  Running
+ Container rivet-chaos-engine-1-1  Running
+ Container rivet-chaos-haproxy-1  Running
+ Container rivet-chaos-node-a-1  Creating
+ Container rivet-chaos-node-b-1  Creating
+ Container rivet-chaos-node-a-1  Created
+ Container rivet-chaos-node-b-1  Created
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-node-a-1  Starting
+ Container rivet-chaos-node-b-1  Starting
+ Container rivet-chaos-node-a-1  Started
+ Container rivet-chaos-node-b-1  Started
+settle: admitted 1 of 3, placed 32 of 32 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 32 of 96 replicas, 32 replacements pending
+settle: admitted 3 of 3, placed 32 of 96 replicas, 26 replacements pending
+settle: admitted 3 of 3, placed 32 of 96 replicas, 30 replacements pending
+settle: admitted 3 of 3, placed 42 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 54 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 67 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 79 of 96 replicas, 0 replacements pending
+settle: admitted 3 of 3, placed 89 of 96 replicas, 0 replacements pending
+settle: storage settled: admitted 3 of 3, placed 96 of 96 replicas, 0 replacements pending
+rivet-chaos: every actor answered; starting the clock
+rivet-chaos: 2 faults planned over 300 s
+rivet-chaos: load stopped, waiting 30 s before the final reads
+rivet-chaos: I1 Durability: Pass (23892 checked, 0 violations)
+rivet-chaos: I2 No phantom writes: Pass (23998 checked, 0 violations)
+rivet-chaos: I3 No duplicates: Pass (23998 checked, 0 violations)
+rivet-chaos: I4 Real-time visibility: Pass (2593 checked, 0 violations)
+rivet-chaos: I5 Recovery: Pass (81 checked, 0 violations)
+rivet-chaos: I6 Single activation: Pass (10 checked, 0 violations)
+rivet-chaos: I7 Workflow effects: Pass (1703 checked, 0 violations)
+rivet-chaos: I8 Alarms: Pass (873 checked, 0 violations)
+ Container rivet-chaos-node-a-1  Stopping
+ Container rivet-chaos-node-b-1  Stopping
+ Container rivet-chaos-node-b-1  Stopped
+ Container rivet-chaos-node-b-1  Removing
+ Container rivet-chaos-node-a-1  Stopped
+ Container rivet-chaos-node-a-1  Removing
+ Container rivet-chaos-node-b-1  Removed
+ Container rivet-chaos-node-a-1  Removed
+ Container rivet-chaos-haproxy-1  Stopping
+ Container rivet-chaos-mock-llm-1  Stopping
+ Container rivet-chaos-haproxy-1  Stopped
+ Container rivet-chaos-haproxy-1  Removing
+ Container rivet-chaos-haproxy-1  Removed
+ Container rivet-chaos-engine-2-1  Stopping
+ Container rivet-chaos-engine-1-1  Stopping
+ Container rivet-chaos-engine-3-1  Stopping
+ Container rivet-chaos-engine-3-1  Stopped
+ Container rivet-chaos-engine-3-1  Removing
+ Container rivet-chaos-engine-3-1  Removed
+ Container rivet-chaos-mock-llm-1  Stopped
+ Container rivet-chaos-mock-llm-1  Removing
+ Container rivet-chaos-mock-llm-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopping
+ Container rivet-chaos-engine-1-1  Stopped
+ Container rivet-chaos-engine-1-1  Removing
+ Container rivet-chaos-engine-1-1  Removed
+ Container rivet-chaos-engine-2-1  Stopped
+ Container rivet-chaos-engine-2-1  Removing
+ Container rivet-chaos-engine-2-1  Removed
+ Container rivet-chaos-s3-1  Stopping
+ Container rivet-chaos-s3-1  Stopped
+ Container rivet-chaos-s3-1  Removing
+ Container rivet-chaos-s3-1  Removed
+ Container rivet-chaos-effects-sink-1  Stopped
+ Container rivet-chaos-effects-sink-1  Removing
+ Container rivet-chaos-effects-sink-1  Removed
+ Volume rivet-chaos_s3-data  Removing
+ Network rivet-chaos_peer  Removing
+ Network rivet-chaos_storage  Removing
+ Network rivet-chaos_front  Removing
+ Volume rivet-chaos_engine-3-log  Removing
+ Volume rivet-chaos_engine-1-log  Removing
+ Volume rivet-chaos_sink-data  Removing
+ Volume rivet-chaos_engine-2-log  Removing
+ Network rivet-chaos_peer  Removed
+ Volume rivet-chaos_s3-data  Removed
+ Network rivet-chaos_storage  Removed
+ Volume rivet-chaos_engine-3-log  Removed
+ Volume rivet-chaos_engine-1-log  Removed
+ Network rivet-chaos_front  Removed
+ Volume rivet-chaos_engine-2-log  Removed
+ Volume rivet-chaos_sink-data  Removed
+rivet-chaos: report at results/phase3/instance-crash-s4-1793827631/report.md
+rivet-chaos: run instance-crash-s5-1793828116
+ Network rivet-chaos_storage  Creating
+ Network rivet-chaos_storage  Created
+ Network rivet-chaos_peer  Creating
+ Network rivet-chaos_peer  Created
+ Network rivet-chaos_front  Creating
+ Network rivet-chaos_front  Created
+ Volume rivet-chaos_engine-2-log  Creating
+ Volume rivet-chaos_engine-2-log  Created
+ Volume rivet-chaos_engine-3-log  Creating
+ Volume rivet-chaos_engine-3-log  Created
+ Volume rivet-chaos_s3-data  Creating
+ Volume rivet-chaos_s3-data  Created
+ Volume rivet-chaos_engine-1-log  Creating
+ Volume rivet-chaos_engine-1-log  Created
+ Volume rivet-chaos_sink-data  Creating
+ Volume rivet-chaos_sink-data  Created
+ Container rivet-chaos-effects-sink-1  Creating
+ Container rivet-chaos-s3-1  Creating
+ Container rivet-chaos-effects-sink-1  Created
+ Container rivet-chaos-mock-llm-1  Creating
+ Container rivet-chaos-s3-1  Created
+ Container rivet-chaos-engine-1-1  Creating
+ Container rivet-chaos-engine-2-1  Creating
+ Container rivet-chaos-engine-3-1  Creating
+ Container rivet-chaos-mock-llm-1  Created
+ Container rivet-chaos-engine-1-1  Created
+ Container rivet-chaos-engine-2-1  Created
+ Container rivet-chaos-engine-3-1  Created
+ Container rivet-chaos-haproxy-1  Creating
+ Container rivet-chaos-haproxy-1  Created
+ Container rivet-chaos-effects-sink-1  Starting
+ Container rivet-chaos-s3-1  Starting
+ Container rivet-chaos-effects-sink-1  Started
+ Container rivet-chaos-mock-llm-1  Starting
+ Container rivet-chaos-s3-1  Started
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-mock-llm-1  Started
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-1-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-2-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-3-1  Starting
+ Container rivet-chaos-engine-1-1  Started
+ Container rivet-chaos-engine-3-1  Started
+ Container rivet-chaos-engine-2-1  Started
+ Container rivet-chaos-haproxy-1  Starting
+ Container rivet-chaos-haproxy-1  Started
+bootstrap: http://localhost:7421 is healthy
+bootstrap: http://localhost:7422 is healthy
+bootstrap: http://localhost:7423 is healthy
+bootstrap: default pool ready
+ Container rivet-chaos-s3-1  Running
+ Container rivet-chaos-engine-2-1  Running
+ Container rivet-chaos-effects-sink-1  Running
+ Container rivet-chaos-mock-llm-1  Running
+ Container rivet-chaos-engine-1-1  Running
+ Container rivet-chaos-engine-3-1  Running
+ Container rivet-chaos-haproxy-1  Running
+ Container rivet-chaos-node-b-1  Creating
+ Container rivet-chaos-node-a-1  Creating
+ Container rivet-chaos-node-a-1  Created
+ Container rivet-chaos-node-b-1  Created
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-node-b-1  Starting
+ Container rivet-chaos-node-a-1  Starting
+ Container rivet-chaos-node-a-1  Started
+ Container rivet-chaos-node-b-1  Started
+settle: storage settled: admitted 3 of 3, placed 96 of 96 replicas, 0 replacements pending
+rivet-chaos: every actor answered; starting the clock
+rivet-chaos: 2 faults planned over 300 s

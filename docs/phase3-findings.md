@@ -46,3 +46,28 @@ A disconnect saves the container's addresses and DNS names on that network and r
 So I8 stays strict about delivery, as the plan says, and step reruns are judged in one place. Change it in `crates/chaos-checker/src/sessions.rs` if you'd rather count every rebooking as a failure.
 
 **Admin tokens in archived runs.** Request URLs carry the cluster's admin token (`rvt-token=`), so it appears in HAProxy's access logs and in error messages. `cluster/up.sh` now makes a new token for every cluster, so a token in an archived run opens nothing, and the driver strips it from the errors it records. Runs archived before this change share one older token, which no cluster accepts any more.
+
+## A fresh cluster can keep every tablet on one instance
+
+The strongest finding so far, and new. Details, evidence and the repro are in [repro/early-placement](../repro/early-placement/README.md); the issue draft is [upstream/early-placement.md](upstream/early-placement.md).
+
+- About 60 s after the engines start, the coordinator places the cluster's 32 tablets on the workers it has admitted by then. In 4 of 19 fresh clusters that was one worker, in 6 it was two, although all three engines started within a second. Rivet's VM guide says starting within a minute makes the first placement use every instance.
+- With one worker admitted, every tablet's only copy is on that instance until the others are admitted about 10 s later and learners copy the tablets, 10 to 70 s after that.
+- Killing that instance in the window took every actor down until it returned, and afterwards placement stayed at 46 of 96 replicas for at least five minutes.
+- Destroying it with its disk and starting a fresh one left the whole cluster unavailable: no actor answered for the 7.5 minutes we watched, and the survivors logged `no live member can take the grant; the tablet stays unavailable until a member returns` for all 32 tablets. Whether the 100 writes acknowledged in the window survive in the bucket couldn't be checked.
+- The cause is deliberate: the coordinator bootstraps on whatever workers qualify, so a single-worker development setup gets tablets (`placement.rs:635`). A worker qualifies 60 s after the coordinator first sees it, and workers started together were first seen about 10 s apart.
+
+The harness now avoids the window: `cluster/up.sh` runs `cluster/settle.sh`, which waits until the coordinator reports every replica placed on all three instances. Phase 2's runs didn't wait; in its one single-instance cluster the copies finished about 40 s before the first kill.
+
+## #5957 on a settled cluster
+
+`repro/5957` kills the engine that holds a node's envoy WebSocket. Its first two attempts showed different things:
+
+- The first killed engine-1 about 70 s after the cluster started, before storage settled, and hit the early-placement problem above instead: every ledger unavailable for 210 s, with no stop-command resends at all.
+- The second waited for storage to settle. Both nodes' envoys were on engine-1; after the kill, the survivors resent the stop command to the dead engine 20 times, but every ledger answered again within 40 s, as `pegboard.node_lost_threshold` predicts.
+
+So on a settled cluster, #5957 is intermittent, as the issue says (1 of 4 runs), and holding the envoy connection isn't enough on its own. The script now tries up to four fresh clusters, and the five `instance-down-long` runs in the batch measure how often it happens.
+
+## Upstream
+
+Drafts are in [upstream/](upstream/README.md): the early-placement issue, the `http://` S3 endpoint issue (confirmed on main), the `rivetkit-client` README PR, and the SlateDB clock issue, which still needs a repro on an ordinary Linux host. The self-hosting docs' config keys were fixed upstream on 3 November.

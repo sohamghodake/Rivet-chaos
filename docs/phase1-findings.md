@@ -23,7 +23,7 @@ These ran on one engine binary from npm, with host processes rather than contain
 | `rivetdev/engine:next`; "Rivet 3.0 is still in preview" | 3.0.0 final came out on 1 November at about 11:05 UTC, after `next` was last built | Pinned the image to `3.0.0` by digest, and `rivetkit` and `rivetkit-client` to `3.0.0` |
 | `depot.log_directory` | The key is `storage.log_directory`; `depot` is rejected | Used `storage`; phase 2's engine configs must too |
 | `c.schedule.after(...)` inside the workflow | Workflow steps have no `schedule` | `createVars` captures `c.schedule`, and the step calls it through `step.vars` |
-| I8: each alarm fires once | The step booking the alarm can rerun after a crash (see question 3), which books a second alarm | Give I8 the same exception as I7: a repeat counts only if no fault overlapped that step. **Not yet applied to the plan** |
+| I8: each alarm fires once | The step booking the alarm can rerun after a crash (see question 3), which books a second alarm | Applied in phase 3. A booking that fires twice always fails I8; a booking step that ran twice is allowed only if a fault overlapped it, as for I7 ([phase 3 findings](phase3-findings.md#decisions-worth-knowing)) |
 | `bootstrap.sh` waits for `/health`, then creates the pool | `/health` can pass while pool creation still fails with `depot/overloaded` (`routing_unavailable`) | `bootstrap.sh` retries pool creation |
 
 The plan's fallback of calling actions over HTTP isn't needed: the Rust client handled actions, queues and WebSocket events on 3.0.0.
@@ -69,7 +69,7 @@ The engine serves Prometheus text format at `:6430/metrics`, confirmed on a runn
 
 Nothing has been filed. Before filing, retest on the latest release and search the issues again.
 
-**1. The self-hosting docs give a config the engine refuses to load (confirmed).** The [Docker Compose page](https://rivet.dev/docs/deploy/self-host/control-plane/docker-compose/) uses `depot` and `auto_provision_tablets`. Both 3.0.0 and 3.0.0-preview.6 (the npm build matching the `next` tag) exit at startup:
+**1. The self-hosting docs give a config the engine refuses to load (confirmed; fixed upstream on 3 November in rivet-dev/website commit 6417f2d, #173).** The [Docker Compose page](https://rivet.dev/docs/deploy/self-host/control-plane/docker-compose/) uses `depot` and `auto_provision_tablets`. Both 3.0.0 and 3.0.0-preview.6 (the npm build matching the `next` tag) exit at startup:
 
 ```text
 Error: failed to deserialize config
@@ -92,11 +92,4 @@ These aren't bugs so far, but they could matter once faults are running:
 
 ## Discord draft
 
-Post this in phase 1. It isn't sent yet.
-
-> Hi! I'm building a chaos test harness for Rivet 3.0: three control plane instances, fault injection, and a checker that compares an operation log against the documented storage guarantees. Two questions:
->
-> 1. Is there a recommended way to run a three-instance cluster on one host for testing? I'm planning Docker Compose with `api_peer.advertise_address` set per container and MinIO for the bucket. Anything that would make results misleading compared with separate VMs?
-> 2. I've seen Depot's crash suite and the simulation-only storage settings. Is there a team simulation or fault suite that tests or findings like this should plug into?
->
-> Also, the Docker Compose self-host page uses `depot` and `auto_provision_tablets`, but 3.0.0 rejects both as unknown fields; `storage` and `auto_provision_partitions` work. Happy to send a PR if you can point me to the docs source.
+The draft is in [discord-draft.md](discord-draft.md), with the questions phase 2 added.

@@ -119,7 +119,7 @@ Three rules keep the history usable:
 | I5 | Recovery | Every actor answers again within 5 minutes of the fault healing; the time per actor is reported | Results after each fault |
 | I6 | Single activation | No two nodes send heartbeats for the same actor key in the same 250 ms window | Sink heartbeats |
 | I7 | Workflow effects | Every session finishes all its turns; a tool call runs twice only if a fault overlapped that step | Sink effect log, fault windows |
-| I8 | Alarms | Each scheduled alarm fires once, never early, and fires after recovery if it came due during a fault | Sink alarm log |
+| I8 | Alarms | Each booked alarm fires once, never early, and fires after recovery if it came due during a fault; a booking step runs twice only if a fault overlapped it | Sink alarm log, fault windows |
 
 I1 to I3 are pass or fail. I5 is a deadline plus a measurement. I7 and I8 depend on Rivet's intended semantics, which are listed under open questions, so treat their first failures as questions for the team before calling them bugs.
 
@@ -223,8 +223,8 @@ Exit criteria: 10 instance-crash runs in a row, each with at least 5,000 appends
 
 Goal: all core faults run, and anything surprising becomes a minimal reproduction.
 
-- [ ] Add F2 to F8 to the nemesis, including the sink-triggered kill
-- [ ] Add I4 to I8 to the checker
+- [x] Add F2 to F8 to the nemesis, including the sink-triggered kill
+- [x] Add I4 to I8 to the checker
 - [ ] Run each fault with 5 seeds and keep every raw history
 - [ ] Triage each failure: rerun with the same seed, shrink it (fewer actors, one fault, shorter run), write a standalone repro script, search existing issues, then file
 - [ ] Reproduce one existing report (#5957 or #5946) step by step

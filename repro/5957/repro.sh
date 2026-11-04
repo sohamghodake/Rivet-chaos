@@ -7,16 +7,18 @@
 # cluster (cluster/compose.yaml) and its ledger actor; nothing else.
 #
 #   repro/5957/repro.sh              # 20 ledgers, the engine stays down 180 s
-#   LEDGERS=50 DOWN_S=300 repro/5957/repro.sh
+#   LEDGERS=50 DOWN_S=300 ATTEMPTS=6 repro/5957/repro.sh
 #
-# Exits 0 if it reproduced: some ledgers answered nothing for the whole outage
-# and the survivors logged stop commands sent to the dead engine.
+# It doesn't happen every time, so it tries up to ATTEMPTS (4) fresh clusters.
+# Exits 0 once one reproduces: some ledgers answered nothing for the whole
+# outage, and the survivors logged stop commands sent to the dead engine.
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cluster="$repo/cluster"
 LEDGERS="${LEDGERS:-20}"
 DOWN_S="${DOWN_S:-180}"
+ATTEMPTS="${ATTEMPTS:-4}"
 
 compose() { docker compose --project-directory "$cluster" -f "$cluster/compose.yaml" "$@"; }
 log() { printf '%s  %s\n' "$(date -u +%H:%M:%S)" "$*"; }
@@ -59,89 +61,106 @@ envoy_engine() {
 # up.sh waits until storage has copied every tablet to every instance. Before
 # that, one instance can hold the only copy, and killing it takes everything down
 # for a different reason (see repro/early-placement).
-log "starting a fresh cluster"
-"$cluster/down.sh" >/dev/null 2>&1 || true
-"$cluster/up.sh"
-# shellcheck source=/dev/null
-source "$cluster/.env"
-image="$(docker inspect -f '{{.Config.Image}}' "$(compose ps -q engine-1)")"
-log "engine image: $image"
+# One attempt on a fresh cluster. Returns 0 if it reproduced, 1 if not, 2 if the
+# cluster or the script failed. It runs as a condition, where `set -e` doesn't
+# apply, so each step that must work says so.
+attempt() {
+	log "starting a fresh cluster"
+	"$cluster/down.sh" >/dev/null 2>&1 || true
+	"$cluster/up.sh" || return 2
+	# shellcheck source=/dev/null
+	source "$cluster/.env"
+	log "engine image: $(docker inspect -f '{{.Config.Image}}' "$(compose ps -q engine-1)")"
 
-log "writing to $LEDGERS ledgers until each has answered"
-deadline=$((SECONDS + 180))
-for ((key = 0; key < LEDGERS; key++)); do
-	until [[ "$(call "$key" append "[\"seed-$key\", 0]")" == 200 ]]; do
-		((SECONDS < deadline)) || { log "ledger $key never answered; the cluster isn't healthy"; exit 2; }
-		sleep 1
+	log "writing to $LEDGERS ledgers until each has answered"
+	local deadline=$((SECONDS + 180)) key
+	for ((key = 0; key < LEDGERS; key++)); do
+		until [[ "$(call "$key" append "[\"seed-$key\", 0]")" == 200 ]]; do
+			((SECONDS < deadline)) || { log "ledger $key never answered; the cluster isn't healthy"; return 2; }
+			sleep 1
+		done
 	done
-done
 
-for node in node-a node-b; do
-	log "$node's envoy connection is on $(envoy_engine "$node")"
-done
-victim="$(envoy_engine node-a)"
-[[ -n "$victim" ]] || victim="$(envoy_engine node-b)"
-[[ -n "$victim" ]] || { log "couldn't find either node's envoy connection in HAProxy"; exit 2; }
-peer_ip="$(docker inspect -f '{{(index .NetworkSettings.Networks "rivet-chaos_peer").IPAddress}}' "$(compose ps -q "$victim")")"
+	local node victim peer_ip since killed
+	for node in node-a node-b; do
+		log "$node's envoy connection is on $(envoy_engine "$node")"
+	done
+	victim="$(envoy_engine node-a)"
+	[[ -n "$victim" ]] || victim="$(envoy_engine node-b)"
+	[[ -n "$victim" ]] || { log "couldn't find either node's envoy connection in HAProxy"; return 2; }
+	peer_ip="$(docker inspect -f '{{(index .NetworkSettings.Networks "rivet-chaos_peer").IPAddress}}' "$(compose ps -q "$victim")")"
 
-since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-log "SIGKILL $victim ($peer_ip), keeping it down for $DOWN_S s"
-docker kill --signal KILL "$(compose ps -q "$victim")" >/dev/null
-killed=$SECONDS
+	since="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	log "SIGKILL $victim ($peer_ip), keeping it down for up to $DOWN_S s"
+	docker kill --signal KILL "$(compose ps -q "$victim")" >/dev/null || return 2
+	killed=$SECONDS
 
-# Every ledger is read at once, every 5 s. A ledger counts as answering during
-# the outage if any read succeeds from 10 s after the kill, once the first
-# timeouts have passed.
+	# Every ledger is read at once, every 5 s. A ledger counts as answering during
+	# the outage if any read succeeds from 10 s after the kill, once the first
+	# timeouts have passed. Once every ledger has answered, this attempt can't
+	# reproduce, so it ends early.
+	local -A answered=()
+	local elapsed ok
+	while ((SECONDS - killed < DOWN_S)); do
+		elapsed=$((SECONDS - killed))
+		for ((key = 0; key < LEDGERS; key++)); do
+			call "$key" read >"$reads/$key" &
+		done
+		wait
+		ok=0
+		for ((key = 0; key < LEDGERS; key++)); do
+			if [[ "$(cat "$reads/$key")" == 200 ]]; then
+				ok=$((ok + 1))
+				((elapsed >= 10)) && answered[$key]=1
+			fi
+		done
+		log "+$elapsed s: $ok of $LEDGERS ledgers answered"
+		((${#answered[@]} == LEDGERS)) && break
+		sleep 5
+	done
+
+	local stuck=() survivors=() engine resends not_ready started
+	for ((key = 0; key < LEDGERS; key++)); do
+		[[ -n "${answered[$key]:-}" ]] || stuck+=("$key")
+	done
+	for engine in engine-1 engine-2 engine-3; do
+		[[ "$engine" != "$victim" ]] && survivors+=("$engine")
+	done
+	resends="$(compose logs --no-color --since "$since" "${survivors[@]}" | grep 'failed to send stop command' | grep -c "$peer_ip" || true)"
+	not_ready="$(compose logs --no-color --since "$since" "${survivors[@]}" | grep -c 'actor did not become ready before the gateway deadline' || true)"
+
+	log "starting $victim again"
+	docker start "$(compose ps --all -q "$victim")" >/dev/null || return 2
+	started=$SECONDS
+	for key in "${stuck[@]}"; do
+		until [[ "$(call "$key" read)" == 200 ]]; do
+			((SECONDS - started < 300)) || { log "ledger $key still not answering 300 s after the restart"; break; }
+			sleep 1
+		done
+	done
+	((${#stuck[@]} == 0)) || log "every stuck ledger answered again $((SECONDS - started)) s after the restart"
+
+	echo
+	echo "Ledgers that answered nothing while $victim was down ($((started - killed)) s): ${#stuck[@]} of $LEDGERS (${stuck[*]:-none})"
+	echo "Survivors' 'failed to send stop command' lines addressed to the dead engine ($peer_ip): $resends"
+	echo "Survivors' 'actor did not become ready before the gateway deadline' lines: $not_ready"
+	echo
+	((${#stuck[@]} > 0 && resends > 0))
+}
+
 reads="$(mktemp -d)"
 trap 'rm -rf "$reads"' EXIT
-declare -A answered
-while ((SECONDS - killed < DOWN_S)); do
-	elapsed=$((SECONDS - killed))
-	for ((key = 0; key < LEDGERS; key++)); do
-		call "$key" read >"$reads/$key" &
-	done
-	wait
-	ok=0
-	for ((key = 0; key < LEDGERS; key++)); do
-		if [[ "$(cat "$reads/$key")" == 200 ]]; then
-			ok=$((ok + 1))
-			((elapsed >= 10)) && answered[$key]=1
-		fi
-	done
-	log "+$elapsed s: $ok of $LEDGERS ledgers answered"
-	sleep 5
+for ((try = 1; try <= ATTEMPTS; try++)); do
+	log "attempt $try of $ATTEMPTS"
+	status=0
+	attempt || status=$?
+	if ((status == 0)); then
+		echo "Reproduced rivet-dev/rivet#5957 on attempt $try. The cluster is left running for its logs:"
+		echo "  docker compose -p rivet-chaos logs engine-1 engine-2 engine-3   (cluster/down.sh removes it)"
+		exit 0
+	fi
+	((status == 2)) && exit 2
+	log "not reproduced on attempt $try"
 done
-
-stuck=()
-for ((key = 0; key < LEDGERS; key++)); do
-	[[ -n "${answered[$key]:-}" ]] || stuck+=("$key")
-done
-survivors=()
-for engine in engine-1 engine-2 engine-3; do
-	[[ "$engine" != "$victim" ]] && survivors+=("$engine")
-done
-resends="$(compose logs --no-color --since "$since" "${survivors[@]}" | grep 'failed to send stop command' | grep -c "$peer_ip" || true)"
-not_ready="$(compose logs --no-color --since "$since" "${survivors[@]}" | grep -c 'actor did not become ready before the gateway deadline' || true)"
-
-log "starting $victim again"
-docker start "$(compose ps --all -q "$victim")" >/dev/null
-started=$SECONDS
-for key in "${stuck[@]}"; do
-	until [[ "$(call "$key" read)" == 200 ]]; do
-		((SECONDS - started < 300)) || { log "ledger $key still not answering 300 s after the restart"; break; }
-		sleep 1
-	done
-done
-log "every stuck ledger answered again $((SECONDS - started)) s after the restart"
-
-echo
-echo "Ledgers that answered nothing for the whole ${DOWN_S} s outage: ${#stuck[@]} of $LEDGERS (${stuck[*]:-none})"
-echo "Survivors' 'failed to send stop command' lines addressed to the dead engine ($peer_ip): $resends"
-echo "Survivors' 'actor did not become ready before the gateway deadline' lines: $not_ready"
-echo "Logs: docker compose -p rivet-chaos logs ${survivors[*]}   (cluster/down.sh removes the cluster)"
-if ((${#stuck[@]} > 0 && resends > 0)); then
-	echo "Reproduced rivet-dev/rivet#5957."
-else
-	echo "Not reproduced this time."
-	exit 1
-fi
+echo "Not reproduced in $ATTEMPTS attempts."
+exit 1

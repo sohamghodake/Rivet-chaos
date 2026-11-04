@@ -1,0 +1,17 @@
+20:50:08  attempt 1: starting a fresh cluster
+20:51:20  first placement 65 s after the engines started: 3 instances admitted, 96 replicas placed, maintainers ['engine-1', 'engine-2', 'engine-3']
+20:51:20  attempt 2: starting a fresh cluster
+20:53:03  first placement 63 s after the engines started: 1 instances admitted, 32 replicas placed, maintainers ['engine-2']
+20:53:03  writing 5 entries to each of 20 ledgers
+20:53:05  100 appends acknowledged; placement now 1 instances admitted, 32 of 32 replicas placed; learner phases on engine-2: none ended
+20:53:05  destroying engine-2 and its log volume
+20:53:37  starting a fresh engine-2
+20:53:38  reading every ledger back, for up to 5 minutes
+20:58:39  reads finished 331 s after engine-2 was destroyed
+
+First placement: every tablet on engine-2 alone.
+Acknowledged appends: 100 across 20 ledgers.
+Ledgers that never answered within 5 minutes: 20 [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
+Acknowledged appends missing from the ledgers that answered: 0
+The cluster is left running; cluster/down.sh removes it.
+exit 0

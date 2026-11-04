@@ -136,7 +136,7 @@ Only ledgers are driven so far; agent sessions join the load with I7 and I8 in p
 
 Nothing has been filed. Before filing, retest on the latest release and search the issues again.
 
-1. **Self-hosting docs give config the engine refuses** (from phase 1, now wider). Beyond the Docker Compose page, the VM, storage and configuration reference pages use `depot.*`, `auto_provision_tablets`, `tablets_per_core`, `envoy_lost_threshold` and `depot tablet provision`. 3.0.0, 3.0.0-preview.6 and `next` (3.0.1-preview.2) reject them all. The working names are `storage.*`, `auto_provision_partitions`, `node_lost_threshold` and `rivet-engine storage partition provision --partitions --workers`.
+1. **Self-hosting docs give config the engine refuses** (from phase 1, now wider). **Fixed upstream on 3 November** in rivet-dev/website commit 6417f2d (#173); on 4 November none of these keys appear in the self-host pages any more. Beyond the Docker Compose page, the VM, storage and configuration reference pages use `depot.*`, `auto_provision_tablets`, `tablets_per_core`, `envoy_lost_threshold` and `depot tablet provision`. 3.0.0, 3.0.0-preview.6 and `next` (3.0.1-preview.2) reject them all. The working names are `storage.*`, `auto_provision_partitions`, `node_lost_threshold` and `rivet-engine storage partition provision --partitions --workers`.
 2. **`rivetkit-client` README doesn't match the 3.0.0 crate** (phase 1, unchanged).
 3. **An `http://` S3 endpoint fails silently.** The engine makes no request, logs no error, and exits with `config operation timed out`. It works with the undocumented `AWS_ALLOW_HTTP=true`. At minimum the docs should say so; better, the engine could pass `allow_http` itself for `http://` endpoints or log why it gave up.
 4. **SlateDB gets a wall clock that can go backwards** (above). Needs a repro on a normal Linux host first.
@@ -144,12 +144,12 @@ Nothing has been filed. Before filing, retest on the latest release and search t
 
 ## Add to the Discord draft
 
-> 3. Does a `guard/service_unavailable` rejection (`depot_endpoint_unresolved`, `depot_overloaded`) guarantee the request never reached the actor? We'd like to treat it as definitely not applied.
+One question: does a `guard/service_unavailable` rejection guarantee the request never reached the actor? It's question 3 in [discord-draft.md](discord-draft.md).
 
 ## For phase 3
 
 - Warm every ledger up before the clock starts.
 - Report per-actor unavailability for I5, and add the long kill as a scenario.
 - Explain the #5957 table's exceptions, then write the step-by-step repro the plan asks for and comment on the issue.
-- Move guard rejections to `fail` once Discord question 3 is answered.
+- Move guard rejections to `fail` once question 3 of the [Discord draft](discord-draft.md) is answered.
 - Run at least one batch on a Linux host with a steady clock, so the SlateDB fencings don't mix with the injected faults.
