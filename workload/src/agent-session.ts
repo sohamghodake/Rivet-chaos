@@ -8,10 +8,19 @@ const SINK_URL = process.env.SINK_URL ?? "http://localhost:6510";
 const LLM_URL = process.env.LLM_URL ?? "http://localhost:6511";
 const FOLLOW_UP_MS = Number(process.env.FOLLOW_UP_MS ?? 1_000);
 const HEARTBEAT_MS = 250;
+// Twenty minutes of heartbeats, held while the sink can't be reached.
+const HEARTBEAT_BACKLOG = 4_800;
 const HTTP_TIMEOUT_MS = 5_000;
 
 type UserMessage = { turn: number; text: string };
 type Completion = { reply: string; tool_calls: { name: string }[] };
+type Heartbeat = { key: string; node: string; sent_mono_ns: number };
+
+// CLOCK_MONOTONIC, which every container on the host shares and which never
+// steps, unlike Date.now(). The sink stamps its rows with the same clock.
+function monoNs(): number {
+	return Number(process.hrtime.bigint());
+}
 
 async function post<T>(url: string, body: unknown): Promise<T> {
 	const res = await fetch(url, {
@@ -45,13 +54,27 @@ export const agentSession = actor({
 	// Workflow steps have no `schedule`, so it is captured here for them.
 	createVars: (c) => ({
 		heartbeat: undefined as NodeJS.Timeout | undefined,
+		// Heartbeats not yet delivered, so a node cut off from the sink still
+		// reports when it was running once it can reach the sink again.
+		backlog: [] as Heartbeat[],
+		flushing: false,
 		schedule: c.schedule,
 	}),
 	onWake: (c) => {
 		const key = c.key[0];
+		const vars = c.vars;
 		// Two nodes heartbeating for one key at once is the split-brain signal.
-		c.vars.heartbeat = setInterval(() => {
-			post(`${SINK_URL}/heartbeats`, { key, node: NODE_ID }).catch(() => {});
+		vars.heartbeat = setInterval(() => {
+			vars.backlog.push({ key, node: NODE_ID, sent_mono_ns: monoNs() });
+			vars.backlog.splice(0, vars.backlog.length - HEARTBEAT_BACKLOG);
+			if (vars.flushing) return;
+			vars.flushing = true;
+			const batch = vars.backlog.splice(0);
+			post(`${SINK_URL}/heartbeats`, batch)
+				.catch(() => vars.backlog.unshift(...batch))
+				.finally(() => {
+					vars.flushing = false;
+				});
 		}, HEARTBEAT_MS);
 	},
 	onSleep: (c) => {
@@ -100,6 +123,7 @@ export const agentSession = actor({
 					"followUp",
 					turn,
 					Date.now() + FOLLOW_UP_MS,
+					monoNs() + FOLLOW_UP_MS * 1_000_000,
 				);
 			});
 		});
@@ -109,11 +133,12 @@ export const agentSession = actor({
 			(await c.db.execute(
 				"SELECT turn, reply, tool_calls FROM turns ORDER BY turn",
 			)) as { turn: number; reply: string; tool_calls: number }[],
-		followUp: async (c, turn: number, dueMs: number) => {
+		followUp: async (c, turn: number, dueMs: number, dueMonoNs: number) => {
 			await post(`${SINK_URL}/alarms`, {
 				key: `${c.key[0]}/${turn}`,
 				node: NODE_ID,
 				due_ms: dueMs,
+				due_mono_ns: dueMonoNs,
 			});
 		},
 	},

@@ -8,6 +8,7 @@ ledgers = 10
 processes = 8
 pacing_ms = [50, 200]
 call_timeout_ms = 5000
+agent_sessions = 3
 
 [[nemesis]]
 fault = "kill"

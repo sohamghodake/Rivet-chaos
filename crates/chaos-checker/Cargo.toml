@@ -9,3 +9,4 @@ chaos-core.workspace = true
 
 [dev-dependencies]
 chaos-history.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,24 @@
+# F8: the moment a workflow step's tool call reaches the sink, kill the node
+# running it, and start the node again 30 s later. The workflow should resume on
+# the other node and finish, which I7 checks. Four kills, a minute apart.
+name = "kill-in-step"
+seed = 42
+duration_s = 300
+
+[workload]
+ledgers = 50
+processes = 16
+pacing_ms = [50, 200]
+call_timeout_ms = 5000
+agent_sessions = 10
+
+[[nemesis]]
+fault = "kill-in-step"
+target = ["node-a", "node-b"]
+at_s = 60
+heal_after_s = 30
+repeat_every_s = 60
+
+[checks]
+quiesce_s = 30
+recovery_deadline_s = 300

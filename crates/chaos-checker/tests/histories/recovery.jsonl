@@ -1,0 +1,19 @@
+{"schema":1,"run":"fixture","scenario":"fixture","seed":0,"started_wall_ms":0,"scenario_toml":"","versions":{},"host":{}}
+{"run":"fixture","seq":1,"proc":0,"type":"invoke","f":"append","actor":"ledger/0","op_id":"p0-000001","value":1,"mono_ns":1000000000}
+{"run":"fixture","seq":2,"proc":0,"type":"ok","f":"append","actor":"ledger/0","op_id":"p0-000001","value":1,"mono_ns":1010000000}
+{"run":"fixture","seq":3,"proc":"nemesis","type":"fault-start","fault":"kill","target":"engine-1","mono_ns":10000000000}
+{"run":"fixture","seq":4,"proc":0,"type":"invoke","f":"append","actor":"ledger/0","op_id":"p0-000002","value":2,"mono_ns":12000000000}
+{"run":"fixture","seq":5,"proc":1,"type":"invoke","f":"append","actor":"ledger/1","op_id":"p1-000001","value":1,"mono_ns":15000000000}
+{"run":"fixture","seq":6,"proc":0,"type":"info","f":"append","actor":"ledger/0","op_id":"p0-000002","value":2,"error":"timed out after 5000 ms","mono_ns":17000000000}
+{"run":"fixture","seq":7,"proc":2,"type":"invoke","f":"append","actor":"ledger/0","op_id":"p2-000001","value":1,"mono_ns":20000000000}
+{"run":"fixture","seq":8,"proc":1,"type":"info","f":"append","actor":"ledger/1","op_id":"p1-000001","value":1,"error":"timed out after 5000 ms","mono_ns":20000000001}
+{"run":"fixture","seq":9,"proc":2,"type":"ok","f":"append","actor":"ledger/0","op_id":"p2-000001","value":1,"mono_ns":20500000000}
+{"run":"fixture","seq":10,"proc":3,"type":"invoke","f":"append","actor":"ledger/1","op_id":"p3-000001","value":1,"mono_ns":30000000000}
+{"run":"fixture","seq":11,"proc":3,"type":"info","f":"append","actor":"ledger/1","op_id":"p3-000001","value":1,"error":"timed out after 5000 ms","mono_ns":35000000000}
+{"run":"fixture","seq":12,"proc":"nemesis","type":"fault-heal","fault":"kill","target":"engine-1","mono_ns":40000000000}
+{"run":"fixture","seq":13,"proc":4,"type":"invoke","f":"append","actor":"ledger/1","op_id":"p4-000001","value":1,"mono_ns":42000000000}
+{"run":"fixture","seq":14,"proc":4,"type":"ok","f":"append","actor":"ledger/1","op_id":"p4-000001","value":1,"mono_ns":45000000000}
+{"run":"fixture","seq":15,"proc":5,"type":"invoke","f":"read","actor":"ledger/0","mono_ns":60000000000}
+{"run":"fixture","seq":16,"proc":5,"type":"ok","f":"read","actor":"ledger/0","op_ids":["p0-000001","p2-000001"],"mono_ns":60010000000}
+{"run":"fixture","seq":17,"proc":6,"type":"invoke","f":"read","actor":"ledger/1","mono_ns":60000000000}
+{"run":"fixture","seq":18,"proc":6,"type":"ok","f":"read","actor":"ledger/1","op_ids":["p1-000001","p4-000001"],"mono_ns":60010000000}

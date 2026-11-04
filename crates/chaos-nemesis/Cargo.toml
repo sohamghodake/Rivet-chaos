@@ -10,5 +10,7 @@ bollard.workspace = true
 chaos-core.workspace = true
 chaos-history.workspace = true
 rand.workspace = true
+reqwest.workspace = true
+serde.workspace = true
 tokio.workspace = true
 tokio-util.workspace = true

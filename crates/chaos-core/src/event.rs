@@ -94,6 +94,9 @@ pub enum Body {
         /// What a read returned.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         op_ids: Option<Vec<String>>,
+        /// What a session's `turns` call returned.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        turns: Option<Vec<Turn>>,
         /// An append that found its op_id already written: applied, by an
         /// earlier attempt of the same call.
         #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -112,10 +115,15 @@ pub enum Body {
     FaultStart {
         fault: Fault,
         target: String,
+        /// The network a `disconnect` cuts.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        network: Option<Network>,
     },
     FaultHeal {
         fault: Fault,
         target: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        network: Option<Network>,
     },
 }
 
@@ -130,28 +138,79 @@ pub enum Op {
     Read {
         actor: String,
     },
+    /// Queue a user message for an agent session.
+    Send {
+        actor: String,
+        turn: u32,
+    },
+    /// Read an agent session's finished turns.
+    Turns {
+        actor: String,
+    },
 }
 
 impl Op {
     pub fn actor(&self) -> &str {
         match self {
-            Op::Append { actor, .. } | Op::Read { actor } => actor,
+            Op::Append { actor, .. } | Op::Read { actor } | Op::Send { actor, .. } | Op::Turns { actor } => actor,
         }
     }
+}
+
+/// A finished agent-session turn, as the session's `turns` action returns it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Turn {
+    pub turn: u32,
+    pub tool_calls: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Fault {
-    /// F1: SIGKILL a container, then start it again.
+    /// F1, F4: SIGKILL a container, then start it again.
     Kill,
+    /// F2: freeze a container with `docker pause`, then unpause it.
+    Pause,
+    /// F3: kill a container and delete it with its volumes, then create a fresh one.
+    Replace,
+    /// F5 to F7: disconnect a container from one network, then reconnect it.
+    Disconnect,
+    /// F8: kill the node running a workflow step, the moment the step's tool call
+    /// reaches the sink, then start it again.
+    KillInStep,
 }
 
 impl fmt::Display for Fault {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Fault::Kill => f.write_str("kill"),
-        }
+        f.write_str(match self {
+            Fault::Kill => "kill",
+            Fault::Pause => "pause",
+            Fault::Replace => "replace",
+            Fault::Disconnect => "disconnect",
+            Fault::KillInStep => "kill-in-step",
+        })
+    }
+}
+
+/// The cluster's networks, each carrying one kind of traffic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Network {
+    /// Client and node traffic to the load balancer and instances.
+    Front,
+    /// Traffic between instances.
+    Peer,
+    /// Instances to the bucket.
+    Storage,
+}
+
+impl fmt::Display for Network {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Network::Front => "front",
+            Network::Peer => "peer",
+            Network::Storage => "storage",
+        })
     }
 }
 
@@ -196,6 +255,7 @@ mod tests {
             body: Body::Ok {
                 op: Op::Read { actor: "ledger/1".into() },
                 op_ids: Some(vec!["p0-000001".into()]),
+                turns: None,
                 duplicate: true,
             },
             mono_ns: 5,
@@ -203,6 +263,19 @@ mod tests {
         };
         let line = serde_json::to_string(&event).unwrap();
         assert_eq!(serde_json::from_str::<Event>(&line).unwrap(), event);
+    }
+
+    #[test]
+    fn session_calls_and_disconnects_round_trip() {
+        let lines = [
+            r#"{"run":"r","seq":1,"proc":2,"type":"invoke","f":"send","actor":"session/3","turn":4,"mono_ns":5}"#,
+            r#"{"run":"r","seq":2,"proc":2,"type":"ok","f":"turns","actor":"session/3","turns":[{"turn":4,"tool_calls":2}],"mono_ns":6}"#,
+            r#"{"run":"r","seq":3,"proc":"nemesis","type":"fault-start","fault":"disconnect","target":"engine-2","network":"peer","mono_ns":7}"#,
+        ];
+        for line in lines {
+            let event: Event = serde_json::from_str(line).unwrap();
+            assert_eq!(serde_json::to_string(&event).unwrap(), line);
+        }
     }
 
     #[test]

@@ -1,7 +1,10 @@
 HARNESS = target/release/rivet-chaos
 SEEDS ?= 1 2 3 4 5 6 7 8 9 10
+PHASE3_SEEDS ?= 1 2 3 4 5
+PHASE3_SCENARIOS ?= instance-crash instance-down-long instance-pause instance-replace node-crash \
+	node-isolation instance-isolation bucket-outage kill-in-step
 
-.PHONY: test harness up down run report phase1 phase2 local-up local-down
+.PHONY: test harness up down run report summary phase1 phase2 phase3 local-up local-down
 
 test:
 	cargo test --workspace
@@ -25,13 +28,27 @@ run: harness
 report: harness
 	$(HARNESS) report $(RUN)
 
+# make summary [RESULTS=results/phase3]: one table of every run in a folder.
+summary: harness
+	$(HARNESS) summary $(or $(RESULTS),results/phase3)
+
 # Phase 2's exit criteria: instance-crash once per seed, carrying on past failures.
 phase2: harness
 	@failed=""; for seed in $(SEEDS); do \
-		$(HARNESS) run scenarios/instance-crash.toml --seed $$seed || failed="$$failed $$seed"; \
+		$(HARNESS) run scenarios/instance-crash.toml --seed $$seed --results results/phase2 || failed="$$failed $$seed"; \
 	done; \
 	if [ -n "$$failed" ]; then echo "phase2: seeds that did not pass:$$failed"; exit 1; fi; \
 	echo "phase2: every seed passed"
+
+# Phase 3: every fault in the catalogue once per seed, carrying on past failures,
+# then one table of the lot in results/phase3/summary.md.
+phase3: harness
+	@failed=""; for scenario in $(PHASE3_SCENARIOS); do for seed in $(PHASE3_SEEDS); do \
+		$(HARNESS) run scenarios/$$scenario.toml --seed $$seed --results results/phase3 || failed="$$failed $$scenario/$$seed"; \
+	done; done; \
+	$(HARNESS) summary results/phase3 > results/phase3/summary.md; \
+	if [ -n "$$failed" ]; then echo "phase3: runs that did not pass:$$failed"; exit 1; fi; \
+	echo "phase3: every run passed"
 
 # Phase 1's check, on one engine binary from npm, without Docker.
 local-up:

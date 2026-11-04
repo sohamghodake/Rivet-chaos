@@ -272,6 +272,7 @@ version = "0.1.0"
 dependencies = [
  "chaos-core",
  "chaos-history",
+ "serde_json",
 ]
 
 [[package]]
@@ -287,7 +288,10 @@ dependencies = [
  "chaos-nemesis",
  "chaos-report",
  "clap",
+ "flate2",
+ "reqwest",
  "rivetkit-client",
+ "serde",
  "serde_json",
  "tokio",
  "tokio-util",
@@ -338,6 +342,8 @@ dependencies = [
  "chaos-core",
  "chaos-history",
  "rand 0.9.5",
+ "reqwest",
+ "serde",
  "tokio",
  "tokio-util",
 ]
@@ -547,6 +553,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "libc",
  "rusqlite",
  "serde",
  "tokio",

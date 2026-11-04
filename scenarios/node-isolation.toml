@@ -1,0 +1,25 @@
+# F5: cut one node off the `front` network for 60 s, longer than the 40 s
+# `pegboard.node_lost_threshold`. Its actors should move to the other node, and
+# the cut-off node should stop running them, which I6 checks.
+name = "node-isolation"
+seed = 42
+duration_s = 300
+
+[workload]
+ledgers = 50
+processes = 16
+pacing_ms = [50, 200]
+call_timeout_ms = 5000
+agent_sessions = 10
+
+[[nemesis]]
+fault = "disconnect"
+target = ["node-a", "node-b"]
+network = "front"
+at_s = 60
+heal_after_s = 60
+repeat_every_s = 150
+
+[checks]
+quiesce_s = 30
+recovery_deadline_s = 300

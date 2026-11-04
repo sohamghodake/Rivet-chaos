@@ -1,0 +1,13 @@
+{"schema":1,"run":"fixture","scenario":"fixture","seed":0,"started_wall_ms":0,"scenario_toml":"","versions":{},"host":{}}
+{"run":"fixture","seq":1,"proc":0,"type":"invoke","f":"append","actor":"ledger/0","op_id":"p0-000001","value":1,"mono_ns":1000}
+{"run":"fixture","seq":2,"proc":0,"type":"ok","f":"append","actor":"ledger/0","op_id":"p0-000001","value":1,"mono_ns":2000}
+{"run":"fixture","seq":3,"proc":1,"type":"invoke","f":"read","actor":"ledger/0","mono_ns":3000}
+{"run":"fixture","seq":4,"proc":1,"type":"ok","f":"read","actor":"ledger/0","op_ids":[],"mono_ns":4000}
+{"run":"fixture","seq":5,"proc":1,"type":"invoke","f":"read","actor":"ledger/0","mono_ns":5000}
+{"run":"fixture","seq":6,"proc":1,"type":"ok","f":"read","actor":"ledger/0","op_ids":["p0-000001"],"mono_ns":6000}
+{"run":"fixture","seq":7,"proc":0,"type":"invoke","f":"append","actor":"ledger/0","op_id":"p0-000002","value":2,"mono_ns":7000}
+{"run":"fixture","seq":8,"proc":1,"type":"invoke","f":"read","actor":"ledger/0","mono_ns":7500}
+{"run":"fixture","seq":9,"proc":0,"type":"ok","f":"append","actor":"ledger/0","op_id":"p0-000002","value":2,"mono_ns":8000}
+{"run":"fixture","seq":10,"proc":1,"type":"ok","f":"read","actor":"ledger/0","op_ids":["p0-000001"],"mono_ns":8500}
+{"run":"fixture","seq":11,"proc":1,"type":"invoke","f":"read","actor":"ledger/0","mono_ns":9000}
+{"run":"fixture","seq":12,"proc":1,"type":"ok","f":"read","actor":"ledger/0","op_ids":["p0-000001","p0-000002"],"mono_ns":9500}

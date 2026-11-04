@@ -8,7 +8,7 @@ Written 3 November 2026, against Rivet 3.0.0 (source commit 9e01a0a). Where the 
 | --- | --- |
 | 10 instance-crash runs in a row | Pass. `make phase2`, seeds 1 to 10, about 7 minutes a run |
 | At least 5,000 appends each | Pass. 26,220 to 31,400 acknowledged per run, 279,238 in all |
-| Every run produces a report | Pass. `results/instance-crash-s<seed>-*/report.md` |
+| Every run produces a report | Pass. `results/phase2/instance-crash-s<seed>-*/report.md` |
 | Invariant failures reproduce or are explained | None to explain. I1, I2 and I3 passed in every run |
 
 | Seed | Instances killed | Acknowledged | `info` | Succeeded during faults | p50 | p99 |
@@ -38,7 +38,7 @@ The share of calls that succeeded during faults, from 27% to 97%, mostly measure
 - The number varied from 0 to 35 ledgers per kill. Killing engine-3 at 60 s in seed 2 took out nothing.
 - Every ledger that was down came back 0.1 to 7.7 s after the instance restarted, never before.
 
-A 30 s kill can't show whether anything would have failed over, because a node's reconnects are refused for about 30 s anyway. So one probe (`results/probe-long-kill-s5-*`, seed 5, killing engine-3 at 60 s) kept the instance down for 183 s, past `storage.balancing.missing_worker_ms` (120 s):
+A 30 s kill can't show whether anything would have failed over, because a node's reconnects are refused for about 30 s anyway. So one probe (`results/phase2/probe-long-kill-s5-*`, seed 5, killing engine-3 at 60 s) kept the instance down for 183 s, past `storage.balancing.missing_worker_ms` (120 s):
 
 - I1 to I3 passed again, with 14,206 appends acknowledged.
 - 12 of 50 ledgers had no successful call from the kill until 7.6 s after the restart. They didn't come back at 120 s or at any point while engine-3 was down.

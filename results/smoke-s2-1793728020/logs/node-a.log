@@ -1,9 +1,0 @@
-node-a-1  | 2026-11-03T17:48:17.385599985Z 
-node-a-1  | 2026-11-03T17:48:17.386314671Z   RivetKit 3.0.0 (Engine - Serverful)
-node-a-1  | 2026-11-03T17:48:17.386615497Z   - Endpoint:     http://haproxy:6420/ (remote)
-node-a-1  | 2026-11-03T17:48:17.386625248Z   - Actors:       2
-node-a-1  | 2026-11-03T17:48:17.386796373Z 
-node-a-1  | 2026-11-03T17:48:17.663536022Z ts=2026-11-03T17:48:17.662109226Z level=warn message="sqlite was initialized before the process-wide page cache could be installed; connections keep per-connection page caches" rc=21
-node-a-1  | 2026-11-03T17:48:34.501272846Z ts=2026-11-03T17:48:34.499958825Z level=warn message="websocket reset without a close frame; reconnecting" e=Protocol(ResetWithoutClosingHandshake)
-node-a-1  | 2026-11-03T17:48:34.503717814Z ts=2026-11-03T17:48:34.502364993Z level=error message="sqlite atomic commit failed" actor_id=perpvrvic47a58e21m4dn0ufj4cl00 new_db_size_pages=21 dirty_pages=2 err="Indeterminate(\"commit\")"
-node-a-1  | 2026-11-03T17:48:34.504620883Z ts=2026-11-03T17:48:34.503835056Z level=error message="sqlite atomic write file control failed" actor_id=perpvrvic47a58e21m4dn0ufj4cl00 last_error="Some(\"sqlite commit result is indeterminate\")" err="Indeterminate(\"commit\")"

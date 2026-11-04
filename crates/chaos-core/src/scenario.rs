@@ -5,7 +5,7 @@ use std::fmt;
 
 use serde::Deserialize;
 
-use crate::Fault;
+use crate::{Fault, Network};
 
 /// Why a scenario file was rejected.
 #[derive(Debug, Clone, PartialEq)]
@@ -38,14 +38,34 @@ pub struct Workload {
     pub processes: u32,
     pub pacing_ms: [u64; 2],
     pub call_timeout_ms: u64,
+    /// Share of ledger calls that are reads, which I4 checks.
+    #[serde(default = "default_read_percent")]
+    pub read_percent: u32,
+    /// Agent sessions, each sent a new turn every `turn_pacing_ms`.
+    #[serde(default)]
+    pub agent_sessions: u32,
+    #[serde(default = "default_turn_pacing_ms")]
+    pub turn_pacing_ms: [u64; 2],
+}
+
+fn default_read_percent() -> u32 {
+    10
+}
+
+fn default_turn_pacing_ms() -> [u64; 2] {
+    [2_000, 4_000]
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FaultSpec {
     pub fault: Fault,
-    /// One service, or a list to pick from with the run's seed each time.
+    /// One service, or a list to pick from with the run's seed each time. For
+    /// `kill-in-step`, the nodes it may kill.
     pub target: Targets,
+    /// The network a `disconnect` cuts; required for it and rejected otherwise.
+    #[serde(default)]
+    pub network: Option<Network>,
     pub at_s: u64,
     pub heal_after_s: u64,
     pub repeat_every_s: Option<u64>,
@@ -98,12 +118,23 @@ impl Scenario {
         if workload.ledgers == 0 || workload.processes == 0 {
             return fail("workload needs at least one ledger and one process".into());
         }
-        if workload.pacing_ms[0] > workload.pacing_ms[1] {
-            return fail("workload.pacing_ms must be [min, max]".into());
+        if workload.pacing_ms[0] > workload.pacing_ms[1] || workload.turn_pacing_ms[0] > workload.turn_pacing_ms[1] {
+            return fail("workload.pacing_ms and workload.turn_pacing_ms must be [min, max]".into());
+        }
+        if workload.read_percent > 100 {
+            return fail("workload.read_percent can't exceed 100".into());
         }
         for (index, spec) in self.nemesis.iter().enumerate() {
             if spec.target.choices().is_empty() {
                 return fail(format!("nemesis {index} has no target"));
+            }
+            match (spec.fault, spec.network) {
+                (Fault::Disconnect, None) => return fail(format!("nemesis {index} disconnects but names no network")),
+                (Fault::Disconnect, Some(_)) | (_, None) => {}
+                (fault, Some(_)) => return fail(format!("nemesis {index} is a {fault}, which takes no network")),
+            }
+            if spec.fault == Fault::KillInStep && workload.agent_sessions == 0 {
+                return fail(format!("nemesis {index} kills inside workflow steps, so it needs agent_sessions"));
             }
             if let Some(every) = spec.repeat_every_s
                 && every <= spec.heal_after_s
@@ -170,6 +201,31 @@ mod tests {
     fn overlapping_repeats_are_rejected() {
         let text = EXAMPLE.replace("repeat_every_s = 120", "repeat_every_s = 30");
         assert!(Scenario::parse(&text).unwrap_err().0.contains("overlap"));
+    }
+
+    #[test]
+    fn workload_defaults_fill_in() {
+        let workload = Scenario::parse(EXAMPLE).unwrap().workload;
+        assert_eq!((workload.read_percent, workload.agent_sessions), (10, 0));
+        assert_eq!(workload.turn_pacing_ms, [2_000, 4_000]);
+    }
+
+    #[test]
+    fn disconnect_needs_exactly_its_network() {
+        let disconnect = EXAMPLE.replace(r#"fault = "kill""#, r#"fault = "disconnect""#);
+        assert!(Scenario::parse(&disconnect).unwrap_err().0.contains("names no network"));
+        let with_network = disconnect.replace("at_s = 120", "network = \"peer\"\nat_s = 120");
+        assert_eq!(Scenario::parse(&with_network).unwrap().nemesis[0].network, Some(Network::Peer));
+        let kill_with_network = EXAMPLE.replace("at_s = 120", "network = \"peer\"\nat_s = 120");
+        assert!(Scenario::parse(&kill_with_network).unwrap_err().0.contains("takes no network"));
+    }
+
+    #[test]
+    fn kill_in_step_needs_sessions() {
+        let text = EXAMPLE.replace(r#"fault = "kill""#, r#"fault = "kill-in-step""#);
+        assert!(Scenario::parse(&text).unwrap_err().0.contains("agent_sessions"));
+        let text = text.replace("call_timeout_ms = 5000", "call_timeout_ms = 5000\nagent_sessions = 4");
+        assert_eq!(Scenario::parse(&text).unwrap().nemesis[0].fault, Fault::KillInStep);
     }
 
     #[test]

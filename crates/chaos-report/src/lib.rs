@@ -4,7 +4,7 @@
 use std::{collections::HashMap, fmt::Write};
 
 use chaos_checker::{CheckReport, Status};
-use chaos_core::{Body, Event, Fault, Op, Proc};
+use chaos_core::{Body, Event, Fault, Network, Op, Proc, SinkRecords};
 use chaos_history::History;
 use hdrhistogram::Histogram;
 
@@ -37,6 +37,7 @@ struct Call<'a> {
 struct FaultWindow<'a> {
     fault: Fault,
     target: &'a str,
+    network: Option<Network>,
     start_ns: u64,
     heal_ns: Option<u64>,
 }
@@ -76,13 +77,14 @@ fn fault_windows(events: &[Event]) -> Vec<FaultWindow<'_>> {
     let mut windows: Vec<FaultWindow> = Vec::new();
     for event in events {
         match &event.body {
-            Body::FaultStart { fault, target } => windows.push(FaultWindow {
+            Body::FaultStart { fault, target, network } => windows.push(FaultWindow {
                 fault: *fault,
                 target,
+                network: *network,
                 start_ns: event.mono_ns,
                 heal_ns: None,
             }),
-            Body::FaultHeal { fault, target } => {
+            Body::FaultHeal { fault, target, .. } => {
                 if let Some(window) = windows.iter_mut().find(|window| {
                     window.heal_ns.is_none() && window.fault == *fault && window.target == target
                 }) {
@@ -117,6 +119,14 @@ fn millis(micros: u64) -> String {
     format!("{:.1} ms", micros as f64 / 1000.0)
 }
 
+fn signed_seconds(ns: i64) -> String {
+    format!("{:.1} s", ns as f64 / 1e9)
+}
+
+fn percentile(sorted: &[i64], percent: usize) -> i64 {
+    sorted[(sorted.len() - 1) * percent / 100]
+}
+
 fn status_label(status: Status) -> &'static str {
     match status {
         Status::Pass => "PASS",
@@ -125,7 +135,7 @@ fn status_label(status: Status) -> &'static str {
     }
 }
 
-pub fn render(history: &History, check: &CheckReport) -> String {
+pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>) -> String {
     let header = &history.header;
     let calls = calls(&history.events);
     let faults = fault_windows(&history.events);
@@ -167,6 +177,11 @@ pub fn render(history: &History, check: &CheckReport) -> String {
             check.unreadable.join(", ")
         );
     }
+    for result in check.invariants.iter().filter(|result| !result.notes.is_empty()) {
+        for note in &result.notes {
+            let _ = writeln!(out, "\n{}: {note}", result.id);
+        }
+    }
     for result in check.invariants.iter().filter(|result| !result.violations.is_empty()) {
         let _ = writeln!(out, "\n### {} violations\n", result.id);
         for violation in result.violations.iter().take(MAX_LISTED) {
@@ -188,13 +203,46 @@ pub fn render(history: &History, check: &CheckReport) -> String {
                 Some(heal) => (seconds(heal), seconds(heal - fault.start_ns)),
                 None => ("never".into(), "-".into()),
             };
+            let name = match fault.network {
+                Some(network) => format!("{} from `{network}`", fault.fault),
+                None => fault.fault.to_string(),
+            };
             let _ = writeln!(
                 out,
-                "| {} | {} | {} | {} | {heal} | {length} |",
+                "| {} | {name} | {} | {} | {heal} | {length} |",
                 index + 1,
-                fault.fault,
                 fault.target,
                 seconds(fault.start_ns)
+            );
+        }
+    }
+
+    if !faults.is_empty() {
+        let _ = writeln!(out, "\n## Recovery\n");
+        let _ = writeln!(
+            out,
+            "Actors whose calls failed during a fault, and when each answered again, relative to the heal. A negative time means it answered while the fault was still in place.\n"
+        );
+        let _ = writeln!(out, "| # | Actors interrupted | Back before the heal | After heal, p50 | After heal, max | Longest outage |");
+        let _ = writeln!(out, "| ---: | ---: | ---: | ---: | ---: | ---: |");
+        for index in 0..faults.len() {
+            let recoveries: Vec<_> = check.recoveries.iter().filter(|recovery| recovery.fault == index).collect();
+            if recoveries.is_empty() {
+                let _ = writeln!(out, "| {} | 0 | - | - | - | - |", index + 1);
+                continue;
+            }
+            let mut after: Vec<i64> = recoveries.iter().map(|recovery| recovery.after_heal_ns).collect();
+            after.sort_unstable();
+            let early = after.iter().filter(|ns| **ns < 0).count();
+            let outage = recoveries.iter().map(|recovery| recovery.outage_ns).max().unwrap_or(0);
+            let _ = writeln!(
+                out,
+                "| {} | {} | {early} | {} | {} | {} |",
+                index + 1,
+                recoveries.len(),
+                signed_seconds(percentile(&after, 50)),
+                signed_seconds(*after.last().unwrap()),
+                seconds(outage)
             );
         }
     }
@@ -246,17 +294,65 @@ pub fn render(history: &History, check: &CheckReport) -> String {
         );
     }
 
-    let reads: Vec<&Call> = calls.iter().filter(|call| matches!(call.op, Op::Read { .. })).collect();
-    if !reads.is_empty() {
-        let ok = reads.iter().filter(|call| call.outcome == Outcome::Ok).count();
-        let first = reads.iter().map(|call| call.invoked_ns).min().unwrap_or(0);
-        let last = reads.iter().filter_map(|call| call.done_ns).max().unwrap_or(first);
+    // Reads issued once the load had stopped are the final reads.
+    let last_append = appends.iter().map(|call| call.invoked_ns).max().unwrap_or(0);
+    let (final_reads, load_reads): (Vec<&Call>, Vec<&Call>) = calls
+        .iter()
+        .filter(|call| matches!(call.op, Op::Read { .. }))
+        .partition(|call| call.invoked_ns > last_append);
+    if !load_reads.is_empty() {
+        let ok = load_reads.iter().filter(|call| call.outcome == Outcome::Ok).count();
+        let _ = writeln!(out, "\nReads during the load: {ok} succeeded out of {}.", load_reads.len());
+    }
+    if !final_reads.is_empty() {
+        let ok = final_reads.iter().filter(|call| call.outcome == Outcome::Ok).count();
+        let first = final_reads.iter().map(|call| call.invoked_ns).min().unwrap_or(0);
+        let last = final_reads.iter().filter_map(|call| call.done_ns).max().unwrap_or(first);
         let _ = writeln!(
             out,
             "\nFinal reads: {ok} succeeded out of {} attempts, over {}.",
-            reads.len(),
+            final_reads.len(),
             seconds(last - first)
         );
+    }
+
+    let sends: Vec<&Call> = calls.iter().filter(|call| matches!(call.op, Op::Send { .. })).collect();
+    if !sends.is_empty() {
+        let sessions: std::collections::HashSet<&str> = sends.iter().map(|call| call.op.actor()).collect();
+        let ok = sends.iter().filter(|call| call.outcome == Outcome::Ok).count();
+        let info = sends.iter().filter(|call| matches!(call.outcome, Outcome::Info | Outcome::Pending)).count();
+        let _ = writeln!(out, "\n## Sessions\n");
+        let _ = writeln!(
+            out,
+            "{} sessions were sent {} turns: {ok} acknowledged, {info} with an unknown outcome, {} failed.",
+            sessions.len(),
+            sends.len(),
+            sends.len() - ok - info
+        );
+        if let Some(sink) = sink {
+            let keys: std::collections::HashSet<&str> = sink.effects.iter().map(|row| row.key.as_str()).collect();
+            let _ = writeln!(
+                out,
+                "\nThe sink recorded {} tool calls for {} distinct steps.",
+                sink.effects.len(),
+                keys.len()
+            );
+            let mut delays: Vec<i64> = sink
+                .alarms
+                .iter()
+                .map(|alarm| alarm.mono_ns as i64 - alarm.due_mono_ns as i64)
+                .collect();
+            delays.sort_unstable();
+            if !delays.is_empty() {
+                let _ = writeln!(
+                    out,
+                    "\n{} alarms fired, after their due time by p50 {} and at most {}.",
+                    delays.len(),
+                    millis((percentile(&delays, 50).max(0) / 1000) as u64),
+                    millis(((*delays.last().unwrap()).max(0) / 1000) as u64)
+                );
+            }
+        }
     }
 
     let mut errors: HashMap<&str, usize> = HashMap::new();
@@ -308,14 +404,14 @@ mod tests {
 
     #[test]
     fn appends_are_split_around_the_fault() {
-        let ok = |op| Body::Ok { op, op_ids: None, duplicate: false };
+        let ok = |op| Body::Ok { op, op_ids: None, turns: None, duplicate: false };
         let events = vec![
             event(1, Proc::Client(0), Body::Invoke { op: append(1) }, 0),
             event(2, Proc::Client(0), ok(append(1)), 10),
-            event(3, Proc::Nemesis, Body::FaultStart { fault: Fault::Kill, target: "engine-1".into() }, 100),
+            event(3, Proc::Nemesis, Body::FaultStart { fault: Fault::Kill, target: "engine-1".into(), network: None }, 100),
             event(4, Proc::Client(0), Body::Invoke { op: append(2) }, 110),
             event(5, Proc::Client(0), Body::Info { op: append(2), error: "timeout".into() }, 5110),
-            event(6, Proc::Nemesis, Body::FaultHeal { fault: Fault::Kill, target: "engine-1".into() }, 6000),
+            event(6, Proc::Nemesis, Body::FaultHeal { fault: Fault::Kill, target: "engine-1".into(), network: None }, 6000),
             event(7, Proc::Client(1), Body::Invoke { op: append(3) }, 7000),
             event(8, Proc::Client(1), ok(append(3)), 7030),
         ];
@@ -332,7 +428,7 @@ mod tests {
             },
             events,
         };
-        let report = render(&history, &chaos_checker::check(&history.events));
+        let report = render(&history, &chaos_checker::check(&history.events, None, &Default::default()), None);
 
         assert!(report.contains("| Before faults | 1 | 1 | 0 | 0 | 100.00% | 10.0 ms |"), "{report}");
         assert!(report.contains("| During faults | 1 | 0 | 0 | 1 | 0.00% | - |"), "{report}");
@@ -341,5 +437,7 @@ mod tests {
         assert!(report.contains("| 1 | `timeout` |"), "{report}");
         assert!(report.contains("| Started | 2026-11-03 16:00:00 UTC |"), "{report}");
         assert!(report.contains("| engine | 3.0.0 |"), "{report}");
+        // engine-1's only failed call was at 0.11 s; it answered again at 7.03 s, 1.0 s after the heal.
+        assert!(report.contains("| 1 | 1 | 0 | 1.0 s | 1.0 s | 6.9 s |"), "{report}");
     }
 }
