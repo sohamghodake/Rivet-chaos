@@ -56,6 +56,9 @@ envoy_engine() {
 	echo "$best"
 }
 
+# up.sh waits until storage has copied every tablet to every instance. Before
+# that, one instance can hold the only copy, and killing it takes everything down
+# for a different reason (see repro/early-placement).
 log "starting a fresh cluster"
 "$cluster/down.sh" >/dev/null 2>&1 || true
 "$cluster/up.sh"
@@ -86,18 +89,26 @@ log "SIGKILL $victim ($peer_ip), keeping it down for $DOWN_S s"
 docker kill --signal KILL "$(compose ps -q "$victim")" >/dev/null
 killed=$SECONDS
 
-# A ledger counts as answering during the outage if any read succeeds from 10 s
-# after the kill, once the first timeouts have passed.
+# Every ledger is read at once, every 5 s. A ledger counts as answering during
+# the outage if any read succeeds from 10 s after the kill, once the first
+# timeouts have passed.
+reads="$(mktemp -d)"
+trap 'rm -rf "$reads"' EXIT
 declare -A answered
 while ((SECONDS - killed < DOWN_S)); do
+	elapsed=$((SECONDS - killed))
+	for ((key = 0; key < LEDGERS; key++)); do
+		call "$key" read >"$reads/$key" &
+	done
+	wait
 	ok=0
 	for ((key = 0; key < LEDGERS; key++)); do
-		if [[ "$(call "$key" read)" == 200 ]]; then
+		if [[ "$(cat "$reads/$key")" == 200 ]]; then
 			ok=$((ok + 1))
-			((SECONDS - killed >= 10)) && answered[$key]=1
+			((elapsed >= 10)) && answered[$key]=1
 		fi
 	done
-	log "+$((SECONDS - killed)) s: $ok of $LEDGERS ledgers answered"
+	log "+$elapsed s: $ok of $LEDGERS ledgers answered"
 	sleep 5
 done
 
@@ -113,7 +124,7 @@ resends="$(compose logs --no-color --since "$since" "${survivors[@]}" | grep 'fa
 not_ready="$(compose logs --no-color --since "$since" "${survivors[@]}" | grep -c 'actor did not become ready before the gateway deadline' || true)"
 
 log "starting $victim again"
-docker start "$(compose ps -q "$victim")" >/dev/null
+docker start "$(compose ps --all -q "$victim")" >/dev/null
 started=$SECONDS
 for key in "${stuck[@]}"; do
 	until [[ "$(call "$key" read)" == 200 ]]; do

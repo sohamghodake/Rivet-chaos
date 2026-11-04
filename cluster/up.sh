@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Starts the three-instance cluster from scratch and creates the default pool.
 #
-#   cluster/up.sh      # build, start, wait, create the pool
+#   cluster/up.sh      # build, start, create the pool, wait for storage to settle
 #   cluster/down.sh    # stop it and delete its volumes
 set -euo pipefail
 
@@ -26,3 +26,6 @@ RIVET_TOKEN="$RIVET_TOKEN" \
 	"$cluster/bootstrap.sh"
 # The control plane refuses a node whose pool doesn't exist yet.
 compose up --detach node-a node-b
+# Until storage has copied every tablet to every instance, one instance can hold
+# the only copy, so wait for that before anything is faulted.
+WAIT_S="${SETTLE_WAIT_S:-600}" "$cluster/settle.sh"
