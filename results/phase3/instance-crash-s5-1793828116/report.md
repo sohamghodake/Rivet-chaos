@@ -32,7 +32,7 @@ I7: 2 tool calls ran more than once, each with a fault during its step.
 
 ### I8 violations
 
-- alarm 8/57 was booked 3 times with no fault during its booking step
+- alarm 8/57 was booked 3 times, due at 231.2 s, 291.3 s, 351.3 s, with no fault during its booking step
 
 ## Faults
 

@@ -1,0 +1,124 @@
+19:07:33  +  0.0s  starting a fresh cluster
+ Network rivet-chaos_storage  Creating
+ Network rivet-chaos_storage  Created
+ Network rivet-chaos_front  Creating
+ Network rivet-chaos_front  Created
+ Network rivet-chaos_peer  Creating
+ Network rivet-chaos_peer  Created
+ Volume rivet-chaos_engine-3-log  Creating
+ Volume rivet-chaos_engine-3-log  Created
+ Volume rivet-chaos_engine-1-log  Creating
+ Volume rivet-chaos_engine-1-log  Created
+ Volume rivet-chaos_s3-data  Creating
+ Volume rivet-chaos_s3-data  Created
+ Volume rivet-chaos_sink-data  Creating
+ Volume rivet-chaos_sink-data  Created
+ Volume rivet-chaos_engine-2-log  Creating
+ Volume rivet-chaos_engine-2-log  Created
+ Container rivet-chaos-s3-1  Creating
+ Container rivet-chaos-effects-sink-1  Creating
+ Container rivet-chaos-effects-sink-1  Created
+ Container rivet-chaos-mock-llm-1  Creating
+ Container rivet-chaos-s3-1  Created
+ Container rivet-chaos-engine-1-1  Creating
+ Container rivet-chaos-engine-2-1  Creating
+ Container rivet-chaos-engine-3-1  Creating
+ Container rivet-chaos-mock-llm-1  Created
+ Container rivet-chaos-engine-1-1  Created
+ Container rivet-chaos-engine-2-1  Created
+ Container rivet-chaos-engine-3-1  Created
+ Container rivet-chaos-haproxy-1  Creating
+ Container rivet-chaos-haproxy-1  Created
+ Container rivet-chaos-effects-sink-1  Starting
+ Container rivet-chaos-s3-1  Starting
+ Container rivet-chaos-s3-1  Started
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-effects-sink-1  Started
+ Container rivet-chaos-mock-llm-1  Starting
+ Container rivet-chaos-mock-llm-1  Started
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-3-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-1-1  Starting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-engine-2-1  Starting
+ Container rivet-chaos-engine-1-1  Started
+ Container rivet-chaos-engine-3-1  Started
+ Container rivet-chaos-engine-2-1  Started
+ Container rivet-chaos-haproxy-1  Starting
+ Container rivet-chaos-haproxy-1  Started
+bootstrap: http://localhost:7421 is healthy
+bootstrap: http://localhost:7422 is healthy
+bootstrap: http://localhost:7423 is healthy
+bootstrap: default pool ready
+ Container rivet-chaos-effects-sink-1  Running
+ Container rivet-chaos-mock-llm-1  Running
+ Container rivet-chaos-s3-1  Running
+ Container rivet-chaos-engine-1-1  Running
+ Container rivet-chaos-engine-3-1  Running
+ Container rivet-chaos-engine-2-1  Running
+ Container rivet-chaos-haproxy-1  Running
+ Container rivet-chaos-node-b-1  Creating
+ Container rivet-chaos-node-a-1  Creating
+ Container rivet-chaos-node-a-1  Created
+ Container rivet-chaos-node-b-1  Created
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Waiting
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-s3-1  Healthy
+ Container rivet-chaos-node-b-1  Starting
+ Container rivet-chaos-node-a-1  Starting
+ Container rivet-chaos-node-a-1  Started
+ Container rivet-chaos-node-b-1  Started
+settle: storage settled: admitted 3 of 3, placed 96 of 96 replicas, 0 replacements pending
+19:08:47  + 73.6s  warming up 20 actors
+19:09:20  +106.6s  cutting engine-1 off the peer network for 60 s
+19:10:21  +167.1s  engine-1 reconnected
+19:10:51  +196.7s  cutting engine-3 off the peer network for 60 s
+19:11:51  +257.1s  engine-3 reconnected
+19:12:25  +290.6s  14177 bookings made; waiting for alarms to stop arriving
+
+when                             call result   bookings   fired
+around the engine-1 partition    ok                 719     714
+around the engine-1 partition    unknown            247      31
+around the engine-3 partition    ok                 517     517
+around the engine-3 partition    unknown            249      20
+outside partitions               ok               12435   12411
+outside partitions               unknown             10       0
+
+Acknowledged bookings that never fired: 29
+  alarm-probe/19 b00221, booked 28.4 s after booking began
+  alarm-probe/15 b00223, booked 28.4 s after booking began
+  alarm-probe/1 b00227, booked 28.4 s after booking began
+  alarm-probe/11 b00225, booked 28.4 s after booking began
+  alarm-probe/10 b00221, booked 28.4 s after booking began
+  alarm-probe/12 b00226, booked 28.4 s after booking began
+  alarm-probe/5 b00224, booked 28.4 s after booking began
+  alarm-probe/18 b00229, booked 28.4 s after booking began
+  alarm-probe/6 b00228, booked 28.4 s after booking began
+  alarm-probe/9 b00225, booked 28.5 s after booking began
+  alarm-probe/19 b00222, booked 28.5 s after booking began
+  alarm-probe/19 b00223, booked 28.6 s after booking began
+  alarm-probe/19 b00224, booked 28.7 s after booking began
+  alarm-probe/19 b00225, booked 28.9 s after booking began
+  alarm-probe/19 b00226, booked 28.9 s after booking began
+  alarm-probe/19 b00227, booked 29.1 s after booking began
+  alarm-probe/19 b00228, booked 29.4 s after booking began
+  alarm-probe/19 b00229, booked 29.7 s after booking began
+  alarm-probe/19 b00230, booked 30.0 s after booking began
+  alarm-probe/19 b00231, booked 30.1 s after booking began
+  alarm-probe/19 b00232, booked 30.2 s after booking began
+  alarm-probe/4 b00470, booked 118.4 s after booking began
+  alarm-probe/17 b00474, booked 118.5 s after booking began
+  alarm-probe/6 b00434, booked 118.5 s after booking began
+  alarm-probe/10 b00434, booked 118.5 s after booking began
+  alarm-probe/12 b00477, booked 118.5 s after booking began
+  alarm-probe/9 b00441, booked 118.5 s after booking began
+  alarm-probe/1 b00441, booked 118.5 s after booking began
+  alarm-probe/5 b00464, booked 118.5 s after booking began
+The cluster is left running; cluster/down.sh removes it.
+exit 0

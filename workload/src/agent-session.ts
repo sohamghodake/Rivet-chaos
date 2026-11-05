@@ -76,6 +76,9 @@ export const agentSession = actor({
 					vars.flushing = false;
 				});
 		}, HEARTBEAT_MS);
+		// A node that loses the control plane stops its actors without calling
+		// onSleep; the abort signal fires on every way an actor stops.
+		c.abortSignal.addEventListener("abort", () => clearInterval(vars.heartbeat), { once: true });
 	},
 	onSleep: (c) => {
 		clearInterval(c.vars.heartbeat);

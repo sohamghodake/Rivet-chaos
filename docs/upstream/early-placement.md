@@ -53,9 +53,15 @@ if manifest.tablets.is_empty() && !self.destinations.is_empty() && self.input.di
 
 A worker qualifies `destination_stability_ms` (60 s) after the coordinator first sees it (`state/balancing.rs:389`). Workers that start together can still be first seen about 10 s apart: in the single-worker clusters, the other two were admitted 9 to 10 s after the first. The first to qualify then bootstraps alone. Starting within a minute isn't enough; they would have to be first seen within the same coordinator turn.
 
+## Retest on 3.0.5
+
+A maintainer on Discord had just fixed an availability-zone bug that could allow this, and asked for a retest. 3.0.5 contains that fix (465e5e163). On 5 November, with `rivetdev/engine:3.0.5` (`sha256:c0f18c3b…`), the first fresh cluster placed all 32 tablets on one instance (`admitted_workers=1`, 63 s after start). After that instance and its disk were destroyed, all 20 ledgers stayed unavailable for the 5 minutes we watched, with the same signs as on 3.0.0: placement at 32 of 96, `blocked=destination_or_quorum`, 32 `no_member` re-grants, and `no live member can take the grant` once per tablet. Logs and metrics are in `results/probes/early-placement-3.0.5/`.
+
+The fix doesn't reach this case: with no zone labels configured, `require_zone_labels` stays false, and `placement.rs` still bootstraps on whatever workers qualify first.
+
 ## Repro
 
-`repro/early-placement/repro.py` in https://github.com/sohamghodake/Rivet-chaos starts fresh clusters until one bootstraps on a single instance, writes, destroys that instance and its disk, and reads everything back. It caught the single-instance case on its second cluster. Logs and metrics from that run are in `results/probes/early-placement-1793825583/`.
+`repro/early-placement/repro.py` in https://github.com/sohamghodake/Rivet-chaos (`ENGINE_IMAGE=rivetdev/engine:3.0.5 repro/early-placement/repro.py` for 3.0.5) starts fresh clusters until one bootstraps on a single instance, writes, destroys that instance and its disk, and reads everything back. It caught the single-instance case on its second cluster. Logs and metrics from that run are in `results/probes/early-placement-1793825583/`.
 
 ## Possible fixes
 

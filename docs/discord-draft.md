@@ -1,6 +1,6 @@
 # Discord draft
 
-For Rivet's Discord, ready to paste. Not sent yet.
+For Rivet's Discord. Sent on 5 November; the answers are in [discord-answers.md](discord-answers.md).
 
 > Hi! I'm building a chaos-testing harness for Rivet 3.0: three engines in Docker Compose behind HAProxy, a fault injector, and a checker that compares a log of every operation against the documented storage guarantees. Once storage has settled, no acknowledged write has been lost so far. Four questions:
 >

@@ -34,6 +34,8 @@ Killing the instance without deleting its disk (`results/probes/early-kill-*`) a
 repro/early-placement/repro.py
 ```
 
+To run it against another release, set `ENGINE_IMAGE`, such as `ENGINE_IMAGE=rivetdev/engine:3.0.5 repro/early-placement/repro.py`. On 5 November it reproduced on 3.0.5 on the first cluster, with the same outcome as on 3.0.0 (`results/probes/early-placement-3.0.5/`). 3.0.5 includes a placement fix for availability zones, which doesn't apply when no zones are configured.
+
 It needs Docker with Compose, `curl`, `openssl` and Python 3, and starts up to `ATTEMPTS` (8) fresh clusters, about two minutes each, until one places every tablet on one instance. It leaves the cluster running for its logs; `cluster/down.sh` removes it. The run above is archived in `results/probes/early-placement-1793825583/`.
 
 The harness avoids this window: `cluster/up.sh` runs `cluster/settle.sh`, which waits until the coordinator has placed every replica on all three instances before anything is faulted.

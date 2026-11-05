@@ -28,6 +28,9 @@ use tokio_util::sync::CancellationToken;
 /// How long `kill-in-step` waits for a workflow step on one of its nodes before
 /// giving up on that occurrence.
 const STEP_WAIT: Duration = Duration::from_secs(120);
+/// How long a kill or pause waits for its target to be running, as when an
+/// engine that fenced itself is being restarted, before skipping that occurrence.
+const TARGET_WAIT: Duration = Duration::from_secs(30);
 
 /// One fault, at a fixed offset from the start of the run.
 #[derive(Debug, Clone, PartialEq)]
@@ -122,6 +125,23 @@ impl Nemesis {
 
     fn network_name(&self, network: Network) -> String {
         format!("{}_{network}", self.project)
+    }
+
+    /// Whether the service's container is running and not paused, waiting up to
+    /// `wait` for it to become so.
+    async fn running(&self, service: &str, wait: Duration) -> Result<bool> {
+        let started = StdInstant::now();
+        loop {
+            let id = self.container(service).await?;
+            let state = self.docker.inspect_container(&id, None).await?.state.unwrap_or_default();
+            if state.running == Some(true) && state.paused != Some(true) {
+                return Ok(true);
+            }
+            if started.elapsed() >= wait {
+                return Ok(false);
+            }
+            tokio::time::sleep(Duration::from_millis(500)).await;
+        }
     }
 
     async fn sigkill(&self, id: &str) -> Result<()> {
@@ -278,6 +298,10 @@ impl Nemesis {
                     },
                     _ => planned.target,
                 };
+                if matches!(fault, Fault::Kill | Fault::Pause) && !nemesis.running(&target, TARGET_WAIT).await? {
+                    println!("rivet-chaos: {target} wasn't running, so {fault} {target} was skipped");
+                    return Ok(());
+                }
                 recorder.record(
                     Proc::Nemesis,
                     Body::FaultStart { fault, target: target.clone(), network },

@@ -10,7 +10,8 @@
 name: rivet-chaos
 
 x-engine: &engine
-  image: rivetdev/engine:3.0.0@sha256:5ae3c24275eeff87ad1962f4d66fcdb85786fc1397feeeb55afc2ca1f7ccf6f2
+  # ENGINE_IMAGE retests a finding on another release without changing the default.
+  image: ${ENGINE_IMAGE:-rivetdev/engine:3.0.0@sha256:5ae3c24275eeff87ad1962f4d66fcdb85786fc1397feeeb55afc2ca1f7ccf6f2}
   environment:
     RIVET__AUTH__ADMIN_TOKEN: "${RIVET_TOKEN:?run cluster/up.sh to create cluster/.env}"
     # Without it the S3 client rejects the http:// endpoint before sending
@@ -21,7 +22,10 @@ x-engine: &engine
       condition: service_healthy
   # Rivet's VM guide gives the engine 11 minutes to stop; SIGKILL is the nemesis's job.
   stop_grace_period: 660s
-  restart: "no"
+  # As the VM guide's systemd unit (`Restart=always`): an engine that fences
+  # itself and exits comes back. A container the nemesis kills or stops counts
+  # as stopped by hand, so Docker leaves it down until the nemesis heals it.
+  restart: always
 
 x-node: &node
   image: rivet-chaos-workload

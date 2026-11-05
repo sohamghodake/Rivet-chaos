@@ -1,6 +1,6 @@
 # instance-crash-s1-1793826176
 
-**Verdict: FAIL**
+**Verdict: PASS**
 
 | | |
 | --- | --- |
@@ -26,11 +26,9 @@
 | I5 | Recovery | PASS | 92 | 0 |
 | I6 | Single activation | PASS | 10 | 0 |
 | I7 | Workflow effects | PASS | 1628 | 0 |
-| I8 | Alarms | FAIL | 843 | 1 |
+| I8 | Alarms | PASS | 843 | 0 |
 
-### I8 violations
-
-- alarm 2/56 fired 0.1 s early
+I8: 1 alarms fired on time by the wall clock but early by the monotonic clock, as a forward wall-clock adjustment causes.
 
 ## Faults
 
