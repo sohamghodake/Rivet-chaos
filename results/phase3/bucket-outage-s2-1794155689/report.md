@@ -1,6 +1,6 @@
 # bucket-outage-s2-1794155689
 
-**Verdict: FAIL**
+**Verdict: PASS**
 
 | | |
 | --- | --- |
@@ -26,11 +26,9 @@
 | I5 | Recovery | PASS | 60 | 0 |
 | I6 | Single activation | PASS | 10 | 0 |
 | I7 | Workflow effects | PASS | 1368 | 0 |
-| I8 | Alarms | FAIL | 681 | 1 |
+| I8 | Alarms | PASS | 681 | 0 |
 
-### I8 violations
-
-- alarm 7/30 was booked 2 times, due at 87.3 s, 186.8 s, with no fault during its booking step
+I8: 1 alarms were booked more than once because a fault interrupted their booking step; each booking fired once.
 
 ## Faults
 

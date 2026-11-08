@@ -1,6 +1,6 @@
 # bucket-outage-s5-1794157088
 
-**Verdict: FAIL**
+**Verdict: PASS**
 
 | | |
 | --- | --- |
@@ -26,11 +26,9 @@
 | I5 | Recovery | PASS | 60 | 0 |
 | I6 | Single activation | PASS | 10 | 0 |
 | I7 | Workflow effects | PASS | 1226 | 0 |
-| I8 | Alarms | FAIL | 616 | 1 |
+| I8 | Alarms | PASS | 616 | 0 |
 
-### I8 violations
-
-- alarm 1/83 fired 17 ms before its wall-clock due time
+I8: 1 alarms fired early by the wall clock but on time by the monotonic clock, as a backward wall-clock step between booking and firing causes.
 
 ## Faults
 

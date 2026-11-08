@@ -1,6 +1,6 @@
 # instance-isolation-s2-1793842922
 
-**Verdict: FAIL**
+**Verdict: PASS**
 
 | | |
 | --- | --- |
@@ -25,12 +25,10 @@
 | I4 | Real-time visibility | PASS | 2161 | 0 |
 | I5 | Recovery | PASS | 113 | 0 |
 | I6 | Single activation | PASS | 10 | 0 |
-| I7 | Workflow effects | FAIL | 1401 | 1 |
+| I7 | Workflow effects | PASS | 1401 | 0 |
 | I8 | Alarms | PASS | 718 | 0 |
 
-### I7 violations
-
-- tool call 8/28/tool-1 ran 2 times, from 120.9 s, with no fault during its step
+I7: 1 tool calls ran more than once, each with a fault during its step.
 
 ## Faults
 

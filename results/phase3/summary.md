@@ -5,9 +5,9 @@
 | `instance-pause` | F2 | 5 | 5 | pass | pass | pass | pass | pass | pass | pass | pass | 115246 | 407 | 6.3 s |
 | `instance-replace` | F3 | 5 | 5 | pass | pass | pass | pass | pass | pass | pass | pass | 206289 | 221 | 8.7 s |
 | `node-crash` | F4 | 5 | 5 | pass | pass | pass | pass | pass | pass | pass | pass | 115999 | 289 | 16.5 s |
-| `node-isolation` | F5 | 5 | 0 | pass | pass | pass | pass | pass | **FAIL** (5) | pass | **FAIL** (1) | 114483 | 268 | 7.9 s |
-| `instance-isolation` | F6 | 5 | 1 | pass | pass | pass | pass | **FAIL** (1) | pass | **FAIL** (1) | **FAIL** (3) | 86255 | 571 | 302.5 s |
-| `bucket-outage` | F7 | 5 | 2 | pass | pass | pass | pass | pass | pass | pass | **FAIL** (3) | 89143 | 300 | 21.9 s |
+| `node-isolation` | F5 | 5 | 0 | pass | pass | pass | pass | pass | **FAIL** (5) | pass | pass | 114483 | 268 | 7.9 s |
+| `instance-isolation` | F6 | 5 | 2 | pass | pass | pass | pass | **FAIL** (1) | pass | pass | **FAIL** (3) | 86255 | 571 | 302.5 s |
+| `bucket-outage` | F7 | 5 | 4 | pass | pass | pass | pass | pass | pass | pass | **FAIL** (1) | 89143 | 300 | 21.9 s |
 | `kill-in-step` | F8 | 5 | 5 | pass | pass | pass | pass | pass | pass | pass | pass | 71822 | 599 | 16.5 s |
 
 | Run | Seed | I1 | I2 | I3 | I4 | I5 | I6 | I7 | I8 | Acknowledged appends | Actors interrupted | Slowest recovery after heal |
@@ -39,19 +39,19 @@
 | `node-crash-s5-1793839561` | 5 | pass | pass | pass | pass | pass | pass | pass | pass | 23163 | 53 | 14.6 s |
 | `node-isolation-s1-1794158055` | 1 | pass | pass | pass | pass | pass | **FAIL** | pass | pass | 18422 | 95 | 7.7 s |
 | `node-isolation-s2-1794158511` | 2 | pass | pass | pass | pass | pass | **FAIL** | pass | pass | 25625 | 25 | 6.4 s |
-| `node-isolation-s3-1794158995` | 3 | pass | pass | pass | pass | pass | **FAIL** | pass | **FAIL** | 25503 | 29 | 7.6 s |
+| `node-isolation-s3-1794158995` | 3 | pass | pass | pass | pass | pass | **FAIL** | pass | pass | 25503 | 29 | 7.6 s |
 | `node-isolation-s4-1794159470` | 4 | pass | pass | pass | pass | pass | **FAIL** | pass | pass | 18556 | 93 | 7.9 s |
 | `node-isolation-s5-1794159923` | 5 | pass | pass | pass | pass | pass | **FAIL** | pass | pass | 26377 | 26 | -1.2 s |
 | `instance-isolation-s1-1793842420` | 1 | pass | pass | pass | pass | pass | pass | pass | **FAIL** | 16112 | 117 | 30.8 s |
-| `instance-isolation-s2-1793842922` | 2 | pass | pass | pass | pass | pass | pass | **FAIL** | pass | 19134 | 113 | 4.8 s |
+| `instance-isolation-s2-1793842922` | 2 | pass | pass | pass | pass | pass | pass | pass | pass | 19134 | 113 | 4.8 s |
 | `instance-isolation-s3-1793843421` | 3 | pass | pass | pass | pass | **FAIL** | pass | pass | **FAIL** | 16629 | 113 | 302.5 s |
 | `instance-isolation-s4-1793844127` | 4 | pass | pass | pass | pass | pass | pass | pass | **FAIL** | 16493 | 114 | 60.7 s |
 | `instance-isolation-s5-1793844626` | 5 | pass | pass | pass | pass | pass | pass | pass | pass | 17887 | 114 | 5.8 s |
 | `bucket-outage-s1-1794157585` | 1 | pass | pass | pass | pass | pass | pass | pass | **FAIL** | 15748 | 60 | 13.4 s |
-| `bucket-outage-s2-1794155689` | 2 | pass | pass | pass | pass | pass | pass | pass | **FAIL** | 21493 | 60 | 6.9 s |
+| `bucket-outage-s2-1794155689` | 2 | pass | pass | pass | pass | pass | pass | pass | pass | 21493 | 60 | 6.9 s |
 | `bucket-outage-s3-1794156175` | 3 | pass | pass | pass | pass | pass | pass | pass | pass | 18016 | 60 | 13.4 s |
 | `bucket-outage-s4-1794156634` | 4 | pass | pass | pass | pass | pass | pass | pass | pass | 17648 | 60 | 21.5 s |
-| `bucket-outage-s5-1794157088` | 5 | pass | pass | pass | pass | pass | pass | pass | **FAIL** | 16238 | 60 | 21.9 s |
+| `bucket-outage-s5-1794157088` | 5 | pass | pass | pass | pass | pass | pass | pass | pass | 16238 | 60 | 21.9 s |
 | `kill-in-step-s1-1793849176` | 1 | pass | pass | pass | pass | pass | pass | pass | pass | 14595 | 113 | 14.5 s |
 | `kill-in-step-s2-1793849634` | 2 | pass | pass | pass | pass | pass | pass | pass | pass | 13795 | 132 | 16.5 s |
 | `kill-in-step-s3-1793850091` | 3 | pass | pass | pass | pass | pass | pass | pass | pass | 14400 | 108 | 15.7 s |

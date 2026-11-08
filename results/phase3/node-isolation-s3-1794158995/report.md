@@ -26,9 +26,11 @@
 | I5 | Recovery | PASS | 29 | 0 |
 | I6 | Single activation | FAIL | 10 | 6 |
 | I7 | Workflow effects | PASS | 1773 | 0 |
-| I8 | Alarms | FAIL | 903 | 1 |
+| I8 | Alarms | PASS | 903 | 0 |
 
 I8: 1 alarms were booked more than once because a fault interrupted their booking step; each booking fired once.
+
+I8: 1 alarms fired early by the wall clock but on time by the monotonic clock, as a backward wall-clock step between booking and firing causes.
 
 ### I6 violations
 
@@ -38,10 +40,6 @@ I8: 1 alarms were booked more than once because a fault interrupted their bookin
 - session/6 ran on node-a and node-b at once for 40.2 s from 126.6 s
 - session/7 ran on node-a and node-b at once for 40.2 s from 126.6 s
 - session/9 ran on node-a and node-b at once for 40.2 s from 126.6 s
-
-### I8 violations
-
-- alarm 6/29 fired 24 ms before its wall-clock due time
 
 ## Faults
 

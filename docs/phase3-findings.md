@@ -125,12 +125,48 @@ Either a booking was lost while the workflow recorded its step as done, which wo
 
 A maintainer fixed an availability-zone bug in 3.0.4 that could allow it and asked for a retest. On 3.0.5 the first fresh cluster bootstrapped on one instance, and destroying it left every actor unavailable, exactly as on 3.0.0. The fix only applies when zones are configured. See [discord-answers.md](discord-answers.md) and [upstream/early-placement.md](upstream/early-placement.md#retest-on-305).
 
+## Reruns, 8 November
+
+Run on the same Windows + WSL2 host, engine 3.0.0, with engines supervised (`restart: always`) and the workload's heartbeat stopping on `c.abortSignal`. The checker was fixed first (below) and every phase 3 run was checked again with it.
+
+| Fault | Before | After | What still fails |
+| --- | ---: | ---: | --- |
+| F2 instance-pause | 0 of 5 | **5 of 5** | Nothing. Engines that fence are restarted and the cluster is back within 6.3 s of the heal. |
+| F5 node-isolation | 0 of 5 | 0 of 5 | I6 in all five: see below. The I8 failure in seed 3 was a clock step (below). |
+| F6 instance-isolation | 1 of 5 | 2 of 5 | I8 three times (lost alarms), I5 once (the session stuck for 302 s). Seed 2's I7 failure was the checker. |
+| F7 bucket-outage | 0 of 5 | **4 of 5** | I8 in seed 1: see below. No acknowledged write lost in any run; writes resume once the bucket is back. |
+
+### Two checker bugs
+
+1. **A step that ran in the middle of a long fault wasn't excused.** `fault_between` only asked whether a fault *started* inside a step's window, so a booking step at 86 s, during a bucket outage that started at 60 s, counted as a rerun "with no fault during its booking step". It now asks whether a fault was in place at any moment of the window. F7 seed 2 (I8) and F6 seed 2 (I7) pass with it.
+2. **Alarms early by the wall clock but on time by the monotonic clock failed I8.** This host's wall clock steps; F7 seed 5's alarm was 17 ms early by the wall clock and 46 ms late by the monotonic one, F5 seed 3's 24 ms early and 7 ms late. An alarm now fails only when both clocks say it was early; one clock alone is a note, as monotonic-only was already.
+
+Both have tests that fail on the old checker.
+
+### F5: the cut-off node's actors keep running after it rejoins
+
+The heartbeat fix didn't change F5: in all five runs both nodes heartbeated for the same session after the heal, so the old instances on the node that was cut off were never stopped (their abort signal never fired either). The engine had already started those sessions on the other node, and the tool calls show the work moving cleanly to it (I7 passes). The old instances' storage calls fail with `actor is not running on this envoy`, so their writes are fenced and I1 to I3 pass, but their timers and other user code keep running on two nodes at once.
+
+| Seed | Node cut off | Logged "stopping all actors" on rejoin | Longest overlap |
+| ---: | --- | --- | ---: |
+| 1 | node-a, then node-b | no | 214.6 s |
+| 2 | node-b, twice | no | 214.6 s |
+| 3 | node-a, twice | yes | 40.2 s |
+| 4 | node-a, then node-b | yes (node-a) | 71.6 s |
+| 5 | node-b, twice | no | 209.9 s |
+
+When the node logged `reconnected after the envoy lost threshold without a ping; stopping all actors`, the old instances still ran for 40 to 72 s. When it didn't, they ran until the end of the run. Next: a shrunk repro with one actor that runs a timer, the node cut off for longer than `pegboard.node_lost_threshold`, checking whether `onSleep` or the abort signal ever fire on the old instance.
+
+### F7: a booking step reran every 60 s after the bucket came back
+
+In seed 1, sessions 2 and 6 each booked their turn's alarm three times, about 60 s apart (due at 207, 267 and 328 s for session 2), all after the bucket came back at 183 s. Their tools ran once. The first two bookings fired late, together with the third, at 327 s: up to 120 s late. node-b logged failed and slow SQLite operations on that 60 s rhythm (around 260 s and 320 s), so the `schedule-follow-up` step's booking landed each time while the step itself failed and was retried. A step runs at least once, so the workload's booking isn't idempotent; the finding is that some actors' storage kept failing for about 2.5 minutes after the outage ended.
+
 ## Where this stopped (5 November, 04:30 UTC)
 
 The machine had to shut down. To resume:
 
-1. **F2 and F7 with supervised engines.** Seed 1 of F2 is done and passed every invariant: the cascade fence still happened, but the restarted engine brought the cluster back within 4.2 s of the heal. The rest is left: `make phase3 PHASE3_SCENARIOS="instance-pause bucket-outage" PHASE3_SEEDS="2 3 4 5"` for F2, then all five seeds of F7. A half-finished seed 2 is in `results/aborted/`.
+1. ~~**F2 and F7 with supervised engines.**~~ Done on 8 November (see Reruns above).
 2. ~~**Lost alarms.**~~ Done on 5 November: reproduced on 3.0.0 and 3.0.5 (see above).
-3. **F5 again**, now that the heartbeat stops on the actor's abort signal.
+3. ~~**F5 again**~~ Done on 8 November: the overlap is real (see Reruns above).
 4. **The rest of the triage:** the F1 seed 5 storage stall, the F6 session stuck for 302 s, and whether I7 should excuse a rerun right after a heal.
 5. **One clean batch** of everything with the final setup, ideally on a Linux VM, then `make dashboard`, the final table, and the findings.

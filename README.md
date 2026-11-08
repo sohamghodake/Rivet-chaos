@@ -4,7 +4,7 @@
 
 Runs an AI agent workload on a three-instance [Rivet](https://github.com/rivet-dev/rivet) 3.0 cluster, injects faults, and checks a log of every operation against Rivet's documented guarantees, in the style of Jepsen. The design and schedule are in [the plan](docs/plan.md).
 
-**Status:** phase 3. The harness injects all eight core faults (F1 to F8) and checks all eight invariants (I1 to I8). 45 seeded runs, about 920,000 acknowledged writes.
+**Status:** phase 3. The harness injects all eight core faults (F1 to F8) and checks all eight invariants (I1 to I8). 45 seeded runs, about 1,000,000 acknowledged writes.
 
 ## Findings
 
@@ -14,11 +14,12 @@ Tested against Rivet 3.0.0, and retested on 3.0.5 where noted. Each finding has 
 | --- | --- | --- |
 | **A fresh cluster can bootstrap every storage tablet on one instance.** The docs say starting all instances within a minute makes the first placement use all of them, but in 4 of 19 fresh clusters (started within a second of each other) all 32 tablets went to one instance. Replacing that instance and its disk left every actor in the cluster unavailable for as long as we watched (7.5 min). Raised with the maintainers on Discord. It still happens on 3.0.5, which has their availability-zone fix; that fix only applies when zones are configured. | 3.0.0, 3.0.5 | [repro](repro/early-placement/README.md), [issue draft](docs/upstream/early-placement.md) |
 | **One-shot `schedule.after` actions that come due as an engine is partitioned from its peers are lost without running.** 29 of 13,671 acknowledged bookings never ran on 3.0.0, 13 of 14,089 on 3.0.5, all due in the first moments of a partition. First seen as AI-agent workflow follow-ups that never fired. | 3.0.0, 3.0.5 | [repro](repro/lost-alarms), [issue draft](docs/upstream/lost-alarms.md) |
-| **A bucket outage fences every engine.** The storage docs say the bucket isn't on the write path, but the topology lease is renewed through it: a 2-minute outage made all three engines fence themselves and exit, in 5 of 5 runs. Pausing one engine for 45 s fenced a second one. With engines supervised (`Restart=always`, as Rivet's VM guide does), the one pause rerun so far recovered within 4.2 s of the heal; the bucket-outage reruns are pending. | 3.0.0 | [phase 3 findings](docs/phase3-findings.md#f2-and-f7-engines-fence-themselves-and-nothing-restarted-them) |
+| **A bucket outage fences every engine.** The storage docs say the bucket isn't on the write path, but the topology lease is renewed through it: a 2-minute outage made all three engines fence themselves and exit, in 5 of 5 runs. Pausing one engine for 45 s fenced a second one. With engines supervised (`Restart=always`, as Rivet's VM guide does), the cluster recovers and no acknowledged write is lost, but in one run some actors' storage kept failing for about 2.5 minutes after the bucket came back, delaying their alarms by up to 120 s. | 3.0.0 | [phase 3 findings](docs/phase3-findings.md#f2-and-f7-engines-fence-themselves-and-nothing-restarted-them) |
+| **A node cut off from the engine keeps running its actors after it rejoins.** In all five node-isolation runs, the old instances on the node that was cut off kept running (their timers firing) for 40 to 215 s after the engine had started the same actors on the other node. Their writes are fenced (`actor is not running on this envoy`), so no data is lost, but user code runs on two nodes at once. Being shrunk to a repro. | 3.0.0 | [phase 3 findings](docs/phase3-findings.md#f5-the-cut-off-nodes-actors-keep-running-after-it-rejoins) |
 | **[rivet-dev/rivet#5957](https://github.com/rivet-dev/rivet/issues/5957) still happens on 3.0.0 final**: survivors keep resending a stop command to a dead engine and the actor stays down until it returns. Intermittent on a settled cluster, as the issue says. | 3.0.0 | [repro](repro/5957/README.md), [phase 2 findings](docs/phase2-findings.md) |
 | Smaller ones: the engine's S3 client refuses `http://` endpoints without `AWS_ALLOW_HTTP=true` (confirmed on main), and SlateDB looks sensitive to the wall clock stepping backwards (needs a repro on an ordinary Linux host). The self-hosting docs' rejected config keys were fixed upstream on 3 November. | 3.0.0 | [upstream drafts](docs/upstream/README.md) |
 
-**What held up.** Once storage had settled, no acknowledged write was lost or duplicated in any run where the cluster could be read back. Instance replacement (F3), node crashes (F4) and killing a node inside a workflow step (F8) passed every invariant in 5 of 5 runs each: the workflow resumed on the other node and finished.
+**What held up.** Once storage had settled, no acknowledged write was lost or duplicated in any run where the cluster could be read back. Pausing an engine (F2, with supervised engines), instance replacement (F3), node crashes (F4) and killing a node inside a workflow step (F8) passed every invariant in 5 of 5 runs each: after a mid-step kill the workflow resumed on the other node and finished.
 
 ### Phase 3 results
 
@@ -26,15 +27,17 @@ Tested against Rivet 3.0.0, and retested on 3.0.5 where noted. Each finding has 
 | --- | ---: | --- |
 | F1 instance-crash | 4 of 5 | I8 once: an actor's storage stalled for about three minutes, still being triaged |
 | F1, held | 5 of 5 | |
-| F2 instance-pause | 0 of 5 | Engines fenced and exited with nothing to restart them; rerunning with supervised engines (seed 1 passes) |
+| F2 instance-pause | 5 of 5 | |
 | F3 instance-replace | 5 of 5 | |
 | F4 node-crash | 5 of 5 | |
-| F5 node-isolation | 0 of 5 | I6 in all five, a heartbeat bug in the workload (fixed, rerun pending); I8 once, lost alarms |
-| F6 instance-isolation | 1 of 5 | I8 three times, lost alarms; I5 once, a session stuck for 302 s after the heal; I7 once |
-| F7 bucket-outage | 0 of 5 | Every engine fenced and exited; rerunning with supervised engines |
+| F5 node-isolation | 0 of 5 | I6 in all five: the cut-off node keeps running its actors after it rejoins |
+| F6 instance-isolation | 2 of 5 | I8 three times, lost alarms; I5 once, a session stuck for 302 s after the heal |
+| F7 bucket-outage | 4 of 5 | I8 once: storage kept failing for about 2.5 min after the bucket came back |
 | F8 kill-in-step | 5 of 5 | |
 
-Every run is archived under `results/`, with its report, operation history, sink records and container logs. Per-run tables are in [results/phase3/summary.md](results/phase3/summary.md); the unsupervised F2 and F7 runs are kept in `results/phase3-unsupervised/`. The write-ups are [phase 1](docs/phase1-findings.md), [phase 2](docs/phase2-findings.md) and [phase 3](docs/phase3-findings.md).
+F2, F5 and F7 were rerun on 8 November with supervised engines and the workload's heartbeat fix, and every run was checked again after two checker fixes; see [the reruns](docs/phase3-findings.md#reruns-8-november).
+
+Every run is archived under `results/`, with its report, operation history, sink records and container logs. Per-run tables are in [results/phase3/summary.md](results/phase3/summary.md); the unsupervised F2 and F7 runs are kept in `results/phase3-unsupervised/`, and the F5 runs from before the heartbeat fix in `results/phase3-old-heartbeat/`. The write-ups are [phase 1](docs/phase1-findings.md), [phase 2](docs/phase2-findings.md) and [phase 3](docs/phase3-findings.md).
 
 ## How it works
 
@@ -64,7 +67,7 @@ Each invariant has hand-written good and bad histories in `crates/chaos-checker/
 
 ## Next
 
-- Rerun F2 and F7 with supervised engines, and F5 with the heartbeat fix.
+- Shrink the F5 overlap to a repro: one actor with a timer on a node cut off past `pegboard.node_lost_threshold`.
 - Finish triaging the F1 storage stall and the F6 session stuck after a heal.
 - One clean batch of every scenario on a Linux VM, then publish the dashboard.
 - The remaining faults in the plan: disk pressure (F9), a slow, lossy network (F10) and a rolling restart (F11).
