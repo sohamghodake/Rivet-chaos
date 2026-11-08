@@ -1,0 +1,8 @@
+cargo build --release -p chaos-cli
+   Compiling chaos-core v0.1.0 (/home/jenga/rivet-chaos/crates/chaos-core)
+   Compiling chaos-history v0.1.0 (/home/jenga/rivet-chaos/crates/chaos-history)
+   Compiling chaos-checker v0.1.0 (/home/jenga/rivet-chaos/crates/chaos-checker)
+   Compiling chaos-nemesis v0.1.0 (/home/jenga/rivet-chaos/crates/chaos-nemesis)
+   Compiling chaos-driver v0.1.0 (/home/jenga/rivet-chaos/crates/chaos-driver)
+   Compiling chaos-report v0.1.0 (/home/jenga/rivet-chaos/crates/chaos-report)
+   Compiling chaos-cli v0.1.0 (/home/jenga/rivet-chaos/crates/chaos-cli)
