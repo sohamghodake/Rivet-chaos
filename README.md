@@ -1,8 +1,73 @@
 # rivet-chaos
 
-Runs an AI agent workload on a three-instance Rivet 3.0 cluster, injects faults, and checks a log of every operation against Rivet's documented guarantees. The design and schedule are in [the plan](<rivet-chaos architecture and phased plan.md>).
+[![CI](https://github.com/sohamghodake/Rivet-chaos/actions/workflows/ci.yml/badge.svg)](https://github.com/sohamghodake/Rivet-chaos/actions/workflows/ci.yml)
 
-**Status:** phase 3. The harness injects all eight core faults (F1 to F8) on a three-instance cluster in Docker Compose and checks all eight invariants (I1 to I8). See the findings for [phase 1](docs/phase1-findings.md) and [phase 2](docs/phase2-findings.md), and the [#5957 reproduction](repro/5957/README.md).
+Runs an AI agent workload on a three-instance [Rivet](https://github.com/rivet-dev/rivet) 3.0 cluster, injects faults, and checks a log of every operation against Rivet's documented guarantees, in the style of Jepsen. The design and schedule are in [the plan](docs/plan.md).
+
+**Status:** phase 3. The harness injects all eight core faults (F1 to F8) and checks all eight invariants (I1 to I8). 45 seeded runs, about 920,000 acknowledged writes.
+
+## Findings
+
+Tested against Rivet 3.0.0, and retested on 3.0.5 where noted. Each finding has evidence, logs and a repro in this repo.
+
+| Finding | Seen on | Evidence |
+| --- | --- | --- |
+| **A fresh cluster can bootstrap every storage tablet on one instance.** The docs say starting all instances within a minute makes the first placement use all of them, but in 4 of 19 fresh clusters (started within a second of each other) all 32 tablets went to one instance. Replacing that instance and its disk left every actor in the cluster unavailable for as long as we watched (7.5 min). Raised with the maintainers on Discord. It still happens on 3.0.5, which has their availability-zone fix; that fix only applies when zones are configured. | 3.0.0, 3.0.5 | [repro](repro/early-placement/README.md), [issue draft](docs/upstream/early-placement.md) |
+| **One-shot `schedule.after` actions that come due as an engine is partitioned from its peers are lost without running.** 29 of 13,671 acknowledged bookings never ran on 3.0.0, 13 of 14,089 on 3.0.5, all due in the first moments of a partition. First seen as AI-agent workflow follow-ups that never fired. | 3.0.0, 3.0.5 | [repro](repro/lost-alarms), [issue draft](docs/upstream/lost-alarms.md) |
+| **A bucket outage fences every engine.** The storage docs say the bucket isn't on the write path, but the topology lease is renewed through it: a 2-minute outage made all three engines fence themselves and exit, in 5 of 5 runs. Pausing one engine for 45 s fenced a second one. With engines supervised (`Restart=always`, as Rivet's VM guide does), the one pause rerun so far recovered within 4.2 s of the heal; the bucket-outage reruns are pending. | 3.0.0 | [phase 3 findings](docs/phase3-findings.md#f2-and-f7-engines-fence-themselves-and-nothing-restarted-them) |
+| **[rivet-dev/rivet#5957](https://github.com/rivet-dev/rivet/issues/5957) still happens on 3.0.0 final**: survivors keep resending a stop command to a dead engine and the actor stays down until it returns. Intermittent on a settled cluster, as the issue says. | 3.0.0 | [repro](repro/5957/README.md), [phase 2 findings](docs/phase2-findings.md) |
+| Smaller ones: the engine's S3 client refuses `http://` endpoints without `AWS_ALLOW_HTTP=true` (confirmed on main), and SlateDB looks sensitive to the wall clock stepping backwards (needs a repro on an ordinary Linux host). The self-hosting docs' rejected config keys were fixed upstream on 3 November. | 3.0.0 | [upstream drafts](docs/upstream/README.md) |
+
+**What held up.** Once storage had settled, no acknowledged write was lost or duplicated in any run where the cluster could be read back. Instance replacement (F3), node crashes (F4) and killing a node inside a workflow step (F8) passed every invariant in 5 of 5 runs each: the workflow resumed on the other node and finished.
+
+### Phase 3 results
+
+| Fault | Passed | What failed |
+| --- | ---: | --- |
+| F1 instance-crash | 4 of 5 | I8 once: an actor's storage stalled for about three minutes, still being triaged |
+| F1, held | 5 of 5 | |
+| F2 instance-pause | 0 of 5 | Engines fenced and exited with nothing to restart them; rerunning with supervised engines (seed 1 passes) |
+| F3 instance-replace | 5 of 5 | |
+| F4 node-crash | 5 of 5 | |
+| F5 node-isolation | 0 of 5 | I6 in all five, a heartbeat bug in the workload (fixed, rerun pending); I8 once, lost alarms |
+| F6 instance-isolation | 1 of 5 | I8 three times, lost alarms; I5 once, a session stuck for 302 s after the heal; I7 once |
+| F7 bucket-outage | 0 of 5 | Every engine fenced and exited; rerunning with supervised engines |
+| F8 kill-in-step | 5 of 5 | |
+
+Every run is archived under `results/`, with its report, operation history, sink records and container logs. Per-run tables are in [results/phase3/summary.md](results/phase3/summary.md); the unsupervised F2 and F7 runs are kept in `results/phase3-unsupervised/`. The write-ups are [phase 1](docs/phase1-findings.md), [phase 2](docs/phase2-findings.md) and [phase 3](docs/phase3-findings.md).
+
+## How it works
+
+| Crate | What it does |
+| --- | --- |
+| `chaos-driver` | Starts a fresh cluster, drives 50 ledger actors and 10 agent sessions, records every call with its result |
+| `chaos-nemesis` | Injects the scenario's faults with Docker: kills, pauses, replacements and per-network disconnects |
+| `chaos-history` | The operation log, stamped with one monotonic clock for the whole host |
+| `chaos-checker` | Checks the history and the sink's records against I1 to I8 |
+| `chaos-report`, `chaos-cli` | Writes each run's report, the summary tables and the dashboard's data |
+| `effects-sink`, `mock-llm` | Record every tool call, heartbeat and alarm; answer the agents' LLM calls. Never faulted |
+
+The workload in `workload/` is RivetKit 3.0 TypeScript: ledger actors that take appends and reads, and agent sessions that run multi-turn workflows, call tools through the sink and book follow-up alarms.
+
+| Invariant | What it checks |
+| --- | --- |
+| I1 Durability | Every acknowledged append appears in the final read of its ledger |
+| I2 No phantom writes | Every entry in a final read was invoked |
+| I3 No duplicates | Each operation ID appears at most once |
+| I4 Real-time visibility | A read started after an append returned includes that append |
+| I5 Recovery | Every actor answers again within 5 minutes of the fault healing |
+| I6 Single activation | No two nodes heartbeat for the same actor in the same 250 ms window |
+| I7 Workflow effects | Every session finishes; a tool call runs twice only if a fault overlapped that step |
+| I8 Alarms | Each booked alarm fires once, never early, and after recovery if it came due during a fault |
+
+Each invariant has hand-written good and bad histories in `crates/chaos-checker/tests/`.
+
+## Next
+
+- Rerun F2 and F7 with supervised engines, and F5 with the heartbeat fix.
+- Finish triaging the F1 storage stall and the F6 session stuck after a heal.
+- One clean batch of every scenario on a Linux VM, then publish the dashboard.
+- The remaining faults in the plan: disk pressure (F9), a slow, lossy network (F10) and a rolling restart (F11).
 
 ## Requirements
 
@@ -73,6 +138,8 @@ This runs the engine binary from npm with one node, the sink and the mock LLM, t
 make test
 ```
 
+This runs the Rust tests and type-checks the workload and the dashboard. CI also runs `cargo fmt --check` and `cargo clippy -- -D warnings`.
+
 ## Troubleshooting
 
 If `cargo` hangs while downloading crates under WSL, turn off HTTP multiplexing:
@@ -80,3 +147,7 @@ If `cargo` hangs while downloading crates under WSL, turn off HTTP multiplexing:
 ```bash
 export CARGO_HTTP_MULTIPLEXING=false
 ```
+
+## License
+
+[Apache 2.0](LICENSE), the same as Rivet.

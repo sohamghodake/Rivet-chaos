@@ -134,7 +134,7 @@ Only ledgers are driven so far; agent sessions join the load with I7 and I8 in p
 
 ## Upstream candidates
 
-Nothing has been filed. Before filing, retest on the latest release and search the issues again.
+Nothing had been filed when this was written. The current status of every draft is in [upstream/README.md](upstream/README.md).
 
 1. **Self-hosting docs give config the engine refuses** (from phase 1, now wider). **Fixed upstream on 3 November** in rivet-dev/website commit 6417f2d (#173); on 4 November none of these keys appear in the self-host pages any more. Beyond the Docker Compose page, the VM, storage and configuration reference pages use `depot.*`, `auto_provision_tablets`, `tablets_per_core`, `envoy_lost_threshold` and `depot tablet provision`. 3.0.0, 3.0.0-preview.6 and `next` (3.0.1-preview.2) reject them all. The working names are `storage.*`, `auto_provision_partitions`, `node_lost_threshold` and `rivet-engine storage partition provision --partitions --workers`.
 2. **`rivetkit-client` README doesn't match the 3.0.0 crate** (phase 1, unchanged).

@@ -67,7 +67,7 @@ The engine serves Prometheus text format at `:6430/metrics`, confirmed on a runn
 
 ## Upstream candidates
 
-Nothing has been filed. Before filing, retest on the latest release and search the issues again.
+Nothing had been filed when this was written. The current status of every draft is in [upstream/README.md](upstream/README.md).
 
 **1. The self-hosting docs give a config the engine refuses to load (confirmed; fixed upstream on 3 November in rivet-dev/website commit 6417f2d, #173).** The [Docker Compose page](https://rivet.dev/docs/deploy/self-host/control-plane/docker-compose/) uses `depot` and `auto_provision_tablets`. Both 3.0.0 and 3.0.0-preview.6 (the npm build matching the `next` tag) exit at startup:
 
