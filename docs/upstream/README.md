@@ -1,6 +1,6 @@
 # Upstream drafts
 
-Issues, comments and PRs for Rivet, written and ready to paste. None has been sent. Before sending any of them: retest on the latest release, search the issues again, and push this repo so its links work.
+Issues, comments and PRs for Rivet, written and ready to paste. None has been sent. On 8 November rivet-dev/rivet's issues were searched again: no duplicates of early placement, lost alarms or the bucket-outage fencing (#5975 is related to lost alarms but a different path; the draft says so).
 
 | Draft | Kind | Status |
 | --- | --- | --- |

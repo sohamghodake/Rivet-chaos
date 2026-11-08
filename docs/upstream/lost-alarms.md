@@ -45,6 +45,8 @@ error sqlite rollback after failed commit failed  rollback="closed: SQLite datab
 
 `take_due_schedule_dispatches` claims due one-shots by deleting them (`claim_one_shots_sql`), commits, and then dispatches. If that commit lands but comes back indeterminate, and the actor's database is closed before dispatch, the event is gone and the action never runs. #5833 describes the same claim-then-dispatch shape for an ordinary error and explicitly sets aside "the crash window inherent to claim-then-dispatch". This is that window, opened by a routine peer partition rather than a crash, and held open for the 30 s commit deadline. We haven't inspected the schedule table to prove the delete landed.
 
+This is a different path from #5975, where a sleeping actor's alarm comes due while the engine is down and is consumed in pegboard with no envoy connected. Here the actors are awake, the engine stays up, and the event is claimed in rivetkit-core.
+
 The schedule docs say schedules "survive sleep, restarts, upgrades, and crashes", and that "a failed one-shot is complete after its attempted invocation". Here, as far as we can see, the action is never invoked.
 
 ## Question
