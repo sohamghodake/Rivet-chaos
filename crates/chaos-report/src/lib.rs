@@ -77,7 +77,11 @@ fn fault_windows(events: &[Event]) -> Vec<FaultWindow<'_>> {
     let mut windows: Vec<FaultWindow> = Vec::new();
     for event in events {
         match &event.body {
-            Body::FaultStart { fault, target, network } => windows.push(FaultWindow {
+            Body::FaultStart {
+                fault,
+                target,
+                network,
+            } => windows.push(FaultWindow {
                 fault: *fault,
                 target,
                 network: *network,
@@ -177,12 +181,20 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
             check.unreadable.join(", ")
         );
     }
-    for result in check.invariants.iter().filter(|result| !result.notes.is_empty()) {
+    for result in check
+        .invariants
+        .iter()
+        .filter(|result| !result.notes.is_empty())
+    {
         for note in &result.notes {
             let _ = writeln!(out, "\n{}: {note}", result.id);
         }
     }
-    for result in check.invariants.iter().filter(|result| !result.violations.is_empty()) {
+    for result in check
+        .invariants
+        .iter()
+        .filter(|result| !result.violations.is_empty())
+    {
         let _ = writeln!(out, "\n### {} violations\n", result.id);
         for violation in result.violations.iter().take(MAX_LISTED) {
             let _ = writeln!(out, "- {violation}");
@@ -223,18 +235,32 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
             out,
             "Actors whose calls failed during a fault, and when each answered again, relative to the heal. A negative time means it answered while the fault was still in place.\n"
         );
-        let _ = writeln!(out, "| # | Actors interrupted | Back before the heal | After heal, p50 | After heal, max | Longest outage |");
+        let _ = writeln!(
+            out,
+            "| # | Actors interrupted | Back before the heal | After heal, p50 | After heal, max | Longest outage |"
+        );
         let _ = writeln!(out, "| ---: | ---: | ---: | ---: | ---: | ---: |");
         for index in 0..faults.len() {
-            let recoveries: Vec<_> = check.recoveries.iter().filter(|recovery| recovery.fault == index).collect();
+            let recoveries: Vec<_> = check
+                .recoveries
+                .iter()
+                .filter(|recovery| recovery.fault == index)
+                .collect();
             if recoveries.is_empty() {
                 let _ = writeln!(out, "| {} | 0 | - | - | - | - |", index + 1);
                 continue;
             }
-            let mut after: Vec<i64> = recoveries.iter().map(|recovery| recovery.after_heal_ns).collect();
+            let mut after: Vec<i64> = recoveries
+                .iter()
+                .map(|recovery| recovery.after_heal_ns)
+                .collect();
             after.sort_unstable();
             let early = after.iter().filter(|ns| **ns < 0).count();
-            let outage = recoveries.iter().map(|recovery| recovery.outage_ns).max().unwrap_or(0);
+            let outage = recoveries
+                .iter()
+                .map(|recovery| recovery.outage_ns)
+                .max()
+                .unwrap_or(0);
             let _ = writeln!(
                 out,
                 "| {} | {} | {early} | {} | {} | {} |",
@@ -252,9 +278,18 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
         out,
         "Latency is for acknowledged appends, from invoke to result. A call belongs to the window it was invoked in.\n"
     );
-    let _ = writeln!(out, "| Window | Calls | OK | Fail | Info | Succeeded | p50 | p99 | Max |");
-    let _ = writeln!(out, "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |");
-    let appends: Vec<&Call> = calls.iter().filter(|call| matches!(call.op, Op::Append { .. })).collect();
+    let _ = writeln!(
+        out,
+        "| Window | Calls | OK | Fail | Info | Succeeded | p50 | p99 | Max |"
+    );
+    let _ = writeln!(
+        out,
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |"
+    );
+    let appends: Vec<&Call> = calls
+        .iter()
+        .filter(|call| matches!(call.op, Op::Append { .. }))
+        .collect();
     for (label, window) in [
         ("Before faults", Some(Window::Before)),
         ("During faults", Some(Window::During)),
@@ -263,17 +298,26 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
     ] {
         let selected: Vec<&&Call> = appends
             .iter()
-            .filter(|call| window.is_none_or(|window| window_of(call.invoked_ns, &faults) == window))
+            .filter(|call| {
+                window.is_none_or(|window| window_of(call.invoked_ns, &faults) == window)
+            })
             .collect();
         if selected.is_empty() && window.is_some() {
             continue;
         }
-        let count = |outcome| selected.iter().filter(|call| call.outcome == outcome).count();
+        let count = |outcome| {
+            selected
+                .iter()
+                .filter(|call| call.outcome == outcome)
+                .count()
+        };
         let ok = count(Outcome::Ok);
         let mut histogram = Histogram::<u64>::new(3).expect("valid precision");
         for call in selected.iter().filter(|call| call.outcome == Outcome::Ok) {
             let micros = (call.done_ns.unwrap_or(call.invoked_ns) - call.invoked_ns) / 1000;
-            histogram.record(micros.max(1)).expect("auto-resizing histogram");
+            histogram
+                .record(micros.max(1))
+                .expect("auto-resizing histogram");
         }
         let (p50, p99, max) = if ok == 0 {
             ("-".into(), "-".into(), "-".into())
@@ -295,19 +339,41 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
     }
 
     // Reads issued once the load had stopped are the final reads.
-    let last_append = appends.iter().map(|call| call.invoked_ns).max().unwrap_or(0);
+    let last_append = appends
+        .iter()
+        .map(|call| call.invoked_ns)
+        .max()
+        .unwrap_or(0);
     let (final_reads, load_reads): (Vec<&Call>, Vec<&Call>) = calls
         .iter()
         .filter(|call| matches!(call.op, Op::Read { .. }))
         .partition(|call| call.invoked_ns > last_append);
     if !load_reads.is_empty() {
-        let ok = load_reads.iter().filter(|call| call.outcome == Outcome::Ok).count();
-        let _ = writeln!(out, "\nReads during the load: {ok} succeeded out of {}.", load_reads.len());
+        let ok = load_reads
+            .iter()
+            .filter(|call| call.outcome == Outcome::Ok)
+            .count();
+        let _ = writeln!(
+            out,
+            "\nReads during the load: {ok} succeeded out of {}.",
+            load_reads.len()
+        );
     }
     if !final_reads.is_empty() {
-        let ok = final_reads.iter().filter(|call| call.outcome == Outcome::Ok).count();
-        let first = final_reads.iter().map(|call| call.invoked_ns).min().unwrap_or(0);
-        let last = final_reads.iter().filter_map(|call| call.done_ns).max().unwrap_or(first);
+        let ok = final_reads
+            .iter()
+            .filter(|call| call.outcome == Outcome::Ok)
+            .count();
+        let first = final_reads
+            .iter()
+            .map(|call| call.invoked_ns)
+            .min()
+            .unwrap_or(0);
+        let last = final_reads
+            .iter()
+            .filter_map(|call| call.done_ns)
+            .max()
+            .unwrap_or(first);
         let _ = writeln!(
             out,
             "\nFinal reads: {ok} succeeded out of {} attempts, over {}.",
@@ -316,11 +382,21 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
         );
     }
 
-    let sends: Vec<&Call> = calls.iter().filter(|call| matches!(call.op, Op::Send { .. })).collect();
+    let sends: Vec<&Call> = calls
+        .iter()
+        .filter(|call| matches!(call.op, Op::Send { .. }))
+        .collect();
     if !sends.is_empty() {
-        let sessions: std::collections::HashSet<&str> = sends.iter().map(|call| call.op.actor()).collect();
-        let ok = sends.iter().filter(|call| call.outcome == Outcome::Ok).count();
-        let info = sends.iter().filter(|call| matches!(call.outcome, Outcome::Info | Outcome::Pending)).count();
+        let sessions: std::collections::HashSet<&str> =
+            sends.iter().map(|call| call.op.actor()).collect();
+        let ok = sends
+            .iter()
+            .filter(|call| call.outcome == Outcome::Ok)
+            .count();
+        let info = sends
+            .iter()
+            .filter(|call| matches!(call.outcome, Outcome::Info | Outcome::Pending))
+            .count();
         let _ = writeln!(out, "\n## Sessions\n");
         let _ = writeln!(
             out,
@@ -330,7 +406,8 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
             sends.len() - ok - info
         );
         if let Some(sink) = sink {
-            let keys: std::collections::HashSet<&str> = sink.effects.iter().map(|row| row.key.as_str()).collect();
+            let keys: std::collections::HashSet<&str> =
+                sink.effects.iter().map(|row| row.key.as_str()).collect();
             let _ = writeln!(
                 out,
                 "\nThe sink recorded {} tool calls for {} distinct steps.",
@@ -368,7 +445,11 @@ pub fn render(history: &History, check: &CheckReport, sink: Option<&SinkRecords>
         let _ = writeln!(out, "| Count | Error |\n| ---: | --- |");
         for (error, count) in errors {
             let error: String = error.chars().take(200).collect();
-            let _ = writeln!(out, "| {count} | `{}` |", error.replace('|', "\\|").replace('\n', " "));
+            let _ = writeln!(
+                out,
+                "| {count} | `{}` |",
+                error.replace('|', "\\|").replace('\n', " ")
+            );
         }
     }
 
@@ -404,14 +485,45 @@ mod tests {
 
     #[test]
     fn appends_are_split_around_the_fault() {
-        let ok = |op| Body::Ok { op, op_ids: None, turns: None, duplicate: false };
+        let ok = |op| Body::Ok {
+            op,
+            op_ids: None,
+            turns: None,
+            duplicate: false,
+        };
         let events = vec![
             event(1, Proc::Client(0), Body::Invoke { op: append(1) }, 0),
             event(2, Proc::Client(0), ok(append(1)), 10),
-            event(3, Proc::Nemesis, Body::FaultStart { fault: Fault::Kill, target: "engine-1".into(), network: None }, 100),
+            event(
+                3,
+                Proc::Nemesis,
+                Body::FaultStart {
+                    fault: Fault::Kill,
+                    target: "engine-1".into(),
+                    network: None,
+                },
+                100,
+            ),
             event(4, Proc::Client(0), Body::Invoke { op: append(2) }, 110),
-            event(5, Proc::Client(0), Body::Info { op: append(2), error: "timeout".into() }, 5110),
-            event(6, Proc::Nemesis, Body::FaultHeal { fault: Fault::Kill, target: "engine-1".into(), network: None }, 6000),
+            event(
+                5,
+                Proc::Client(0),
+                Body::Info {
+                    op: append(2),
+                    error: "timeout".into(),
+                },
+                5110,
+            ),
+            event(
+                6,
+                Proc::Nemesis,
+                Body::FaultHeal {
+                    fault: Fault::Kill,
+                    target: "engine-1".into(),
+                    network: None,
+                },
+                6000,
+            ),
             event(7, Proc::Client(1), Body::Invoke { op: append(3) }, 7000),
             event(8, Proc::Client(1), ok(append(3)), 7030),
         ];
@@ -428,16 +540,38 @@ mod tests {
             },
             events,
         };
-        let report = render(&history, &chaos_checker::check(&history.events, None, &Default::default()), None);
+        let report = render(
+            &history,
+            &chaos_checker::check(&history.events, None, &Default::default()),
+            None,
+        );
 
-        assert!(report.contains("| Before faults | 1 | 1 | 0 | 0 | 100.00% | 10.0 ms |"), "{report}");
-        assert!(report.contains("| During faults | 1 | 0 | 0 | 1 | 0.00% | - |"), "{report}");
-        assert!(report.contains("| After faults | 1 | 1 | 0 | 0 | 100.00% | 30.0 ms |"), "{report}");
-        assert!(report.contains("| 1 | kill | engine-1 | 0.1 s | 6.0 s | 5.9 s |"), "{report}");
+        assert!(
+            report.contains("| Before faults | 1 | 1 | 0 | 0 | 100.00% | 10.0 ms |"),
+            "{report}"
+        );
+        assert!(
+            report.contains("| During faults | 1 | 0 | 0 | 1 | 0.00% | - |"),
+            "{report}"
+        );
+        assert!(
+            report.contains("| After faults | 1 | 1 | 0 | 0 | 100.00% | 30.0 ms |"),
+            "{report}"
+        );
+        assert!(
+            report.contains("| 1 | kill | engine-1 | 0.1 s | 6.0 s | 5.9 s |"),
+            "{report}"
+        );
         assert!(report.contains("| 1 | `timeout` |"), "{report}");
-        assert!(report.contains("| Started | 2026-11-03 16:00:00 UTC |"), "{report}");
+        assert!(
+            report.contains("| Started | 2026-11-03 16:00:00 UTC |"),
+            "{report}"
+        );
         assert!(report.contains("| engine | 3.0.0 |"), "{report}");
         // engine-1's only failed call was at 0.11 s; it answered again at 7.03 s, 1.0 s after the heal.
-        assert!(report.contains("| 1 | 1 | 0 | 1.0 s | 1.0 s | 6.9 s |"), "{report}");
+        assert!(
+            report.contains("| 1 | 1 | 0 | 1.0 s | 1.0 s | 6.9 s |"),
+            "{report}"
+        );
     }
 }

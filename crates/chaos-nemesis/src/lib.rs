@@ -51,12 +51,19 @@ pub fn plan(specs: &[FaultSpec], duration_s: u64, seed: u64) -> Vec<Planned> {
     let mut rng = StdRng::seed_from_u64(seed ^ 0x006e_656d_6573_6973);
     let mut planned: Vec<Planned> = specs
         .iter()
-        .flat_map(|spec| spec.start_times(duration_s).into_iter().map(move |at| (spec, at)))
+        .flat_map(|spec| {
+            spec.start_times(duration_s)
+                .into_iter()
+                .map(move |at| (spec, at))
+        })
         .map(|(spec, at)| {
             let choices = spec.target.choices();
             let (target, candidates) = match spec.fault {
                 Fault::KillInStep => (String::new(), choices.to_vec()),
-                _ => (choices[rng.random_range(0..choices.len())].clone(), Vec::new()),
+                _ => (
+                    choices[rng.random_range(0..choices.len())].clone(),
+                    Vec::new(),
+                ),
             };
             Planned {
                 at: Duration::from_secs(at),
@@ -114,11 +121,17 @@ impl Nemesis {
             format!("com.docker.compose.service={service}"),
         ];
         let filters = HashMap::from([("label", labels)]);
-        let options = ListContainersOptionsBuilder::new().all(true).filters(&filters).build();
+        let options = ListContainersOptionsBuilder::new()
+            .all(true)
+            .filters(&filters)
+            .build();
         let containers = self.docker.list_containers(Some(options)).await?;
         match containers.as_slice() {
             [container] => container.id.clone().context("container has no ID"),
-            [] => bail!("no container for service {service} in project {}", self.project),
+            [] => bail!(
+                "no container for service {service} in project {}",
+                self.project
+            ),
             many => bail!("{} containers for service {service}", many.len()),
         }
     }
@@ -133,7 +146,12 @@ impl Nemesis {
         let started = StdInstant::now();
         loop {
             let id = self.container(service).await?;
-            let state = self.docker.inspect_container(&id, None).await?.state.unwrap_or_default();
+            let state = self
+                .docker
+                .inspect_container(&id, None)
+                .await?
+                .state
+                .unwrap_or_default();
             if state.running == Some(true) && state.paused != Some(true) {
                 return Ok(true);
             }
@@ -166,7 +184,10 @@ impl Nemesis {
                     .filter_map(|mount| mount.name)
                     .collect();
                 self.sigkill(&id).await?;
-                let options = RemoveContainerOptionsBuilder::new().force(true).v(true).build();
+                let options = RemoveContainerOptionsBuilder::new()
+                    .force(true)
+                    .v(true)
+                    .build();
                 self.docker.remove_container(&id, Some(options)).await?;
                 for volume in volumes {
                     let options = RemoveVolumeOptionsBuilder::new().force(true).build();
@@ -184,7 +205,10 @@ impl Nemesis {
                     .and_then(|settings| settings.networks)
                     .and_then(|mut networks| networks.remove(&name))
                     .with_context(|| format!("{target} is not on {name}"))?;
-                self.detached.lock().unwrap().insert((target.into(), network), settings);
+                self.detached
+                    .lock()
+                    .unwrap()
+                    .insert((target.into(), network), settings);
                 let request = NetworkDisconnectRequest {
                     container: id,
                     force: Some(true),
@@ -235,7 +259,9 @@ impl Nemesis {
                         ..Default::default()
                     }),
                 };
-                self.docker.connect_network(&self.network_name(network), request).await?;
+                self.docker
+                    .connect_network(&self.network_name(network), request)
+                    .await?;
             }
         }
         Ok(())
@@ -244,7 +270,11 @@ impl Nemesis {
     /// Arms the sink and waits for a tool call from one of `candidates`, which the
     /// sink holds unanswered so the node can be killed inside the step. `None` if
     /// no such step ran in time.
-    async fn wait_for_step(&self, candidates: &[String], stop: &CancellationToken) -> Result<Option<StepCall>> {
+    async fn wait_for_step(
+        &self,
+        candidates: &[String],
+        stop: &CancellationToken,
+    ) -> Result<Option<StepCall>> {
         let started = StdInstant::now();
         while started.elapsed() < STEP_WAIT && !stop.is_cancelled() {
             let wait = self
@@ -286,25 +316,41 @@ impl Nemesis {
                 }
                 let (fault, network) = (planned.fault, planned.network);
                 let target = match fault {
-                    Fault::KillInStep => match nemesis.wait_for_step(&planned.candidates, &stop).await? {
-                        Some(call) => {
-                            println!("rivet-chaos: killing {} inside the step that called {}", call.node, call.key);
-                            call.node
+                    Fault::KillInStep => {
+                        match nemesis.wait_for_step(&planned.candidates, &stop).await? {
+                            Some(call) => {
+                                println!(
+                                    "rivet-chaos: killing {} inside the step that called {}",
+                                    call.node, call.key
+                                );
+                                call.node
+                            }
+                            None => {
+                                println!(
+                                    "rivet-chaos: no workflow step ran on {:?} in time; skipped",
+                                    planned.candidates
+                                );
+                                return Ok(());
+                            }
                         }
-                        None => {
-                            println!("rivet-chaos: no workflow step ran on {:?} in time; skipped", planned.candidates);
-                            return Ok(());
-                        }
-                    },
+                    }
                     _ => planned.target,
                 };
-                if matches!(fault, Fault::Kill | Fault::Pause) && !nemesis.running(&target, TARGET_WAIT).await? {
-                    println!("rivet-chaos: {target} wasn't running, so {fault} {target} was skipped");
+                if matches!(fault, Fault::Kill | Fault::Pause)
+                    && !nemesis.running(&target, TARGET_WAIT).await?
+                {
+                    println!(
+                        "rivet-chaos: {target} wasn't running, so {fault} {target} was skipped"
+                    );
                     return Ok(());
                 }
                 recorder.record(
                     Proc::Nemesis,
-                    Body::FaultStart { fault, target: target.clone(), network },
+                    Body::FaultStart {
+                        fault,
+                        target: target.clone(),
+                        network,
+                    },
                     true,
                 )?;
                 nemesis
@@ -319,7 +365,15 @@ impl Nemesis {
                     .heal(fault, &target, network)
                     .await
                     .with_context(|| format!("heal {fault} {target}"))?;
-                recorder.record(Proc::Nemesis, Body::FaultHeal { fault, target, network }, true)?;
+                recorder.record(
+                    Proc::Nemesis,
+                    Body::FaultHeal {
+                        fault,
+                        target,
+                        network,
+                    },
+                    true,
+                )?;
                 Ok(())
             });
         }
@@ -352,14 +406,21 @@ mod tests {
         let planned = plan(&[spec(Fault::Kill, &["engine-1"])], 300, 42);
         let starts: Vec<u64> = planned.iter().map(|fault| fault.at.as_secs()).collect();
         assert_eq!(starts, [60, 180]);
-        assert!(planned.iter().all(|fault| fault.heal_after == Duration::from_secs(30)));
+        assert!(
+            planned
+                .iter()
+                .all(|fault| fault.heal_after == Duration::from_secs(30))
+        );
     }
 
     #[test]
     fn same_seed_picks_the_same_targets() {
         let specs = [spec(Fault::Kill, &["engine-1", "engine-2", "engine-3"])];
         let targets = |seed| -> Vec<String> {
-            plan(&specs, 3_000, seed).into_iter().map(|fault| fault.target).collect()
+            plan(&specs, 3_000, seed)
+                .into_iter()
+                .map(|fault| fault.target)
+                .collect()
         };
         assert_eq!(targets(7), targets(7));
         assert_ne!(targets(7), targets(8));

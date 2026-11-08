@@ -86,8 +86,15 @@ async fn check_ledger(client: &Client, run: &str) -> Result<()> {
     let read = ledger.action("read", vec![]).await?;
     let read: Vec<String> = serde_json::from_value(read)?;
     let found: HashSet<String> = read.iter().cloned().collect();
-    ensure!(read.len() == APPENDS, "read {} rows, expected {APPENDS}", read.len());
-    ensure!(found == expected, "read-back IDs differ from the IDs appended");
+    ensure!(
+        read.len() == APPENDS,
+        "read {} rows, expected {APPENDS}",
+        read.len()
+    );
+    ensure!(
+        found == expected,
+        "read-back IDs differ from the IDs appended"
+    );
     println!("ledger: read back exactly {APPENDS} entries, repeated op_id reported as duplicate");
     Ok(())
 }
@@ -137,12 +144,18 @@ async fn check_session(client: &Client, sink: &str, run: &str) -> Result<()> {
             break turns;
         }
         if Instant::now() > deadline {
-            bail!("{} of {TURNS} turns finished before the deadline", turns.len());
+            bail!(
+                "{} of {TURNS} turns finished before the deadline",
+                turns.len()
+            );
         }
         tokio::time::sleep(Duration::from_millis(200)).await;
     };
     let numbers: Vec<usize> = turns.iter().map(|turn| turn.turn).collect();
-    ensure!(numbers == (1..=TURNS).collect::<Vec<_>>(), "turns were {numbers:?}");
+    ensure!(
+        numbers == (1..=TURNS).collect::<Vec<_>>(),
+        "turns were {numbers:?}"
+    );
     println!("session: {TURNS} turns completed");
 
     let prefix = format!("{run}/");
@@ -161,7 +174,10 @@ async fn check_session(client: &Client, sink: &str, run: &str) -> Result<()> {
         calls == expected,
         "sink effects don't match tool steps: got {calls:?}, expected {expected:?}"
     );
-    println!("sink: exactly one effect for each of {} tool steps", expected.len());
+    println!(
+        "sink: exactly one effect for each of {} tool steps",
+        expected.len()
+    );
 
     // Alarms fire about a second after their turn, so give the last ones time to land.
     let deadline = Instant::now() + Duration::from_secs(30);
@@ -179,7 +195,10 @@ async fn check_session(client: &Client, sink: &str, run: &str) -> Result<()> {
         alarms.len(),
         keys.len()
     );
-    let early: Vec<&Alarm> = alarms.iter().filter(|alarm| alarm.received_ms < alarm.due_ms).collect();
+    let early: Vec<&Alarm> = alarms
+        .iter()
+        .filter(|alarm| alarm.received_ms < alarm.due_ms)
+        .collect();
     ensure!(early.is_empty(), "alarms fired early: {early:?}");
     println!("sink: one alarm per turn, none early");
 
@@ -189,7 +208,10 @@ async fn check_session(client: &Client, sink: &str, run: &str) -> Result<()> {
         tokio::time::sleep(Duration::from_millis(100)).await;
     }
     let received = tokens.load(Ordering::Relaxed);
-    ensure!(received == words, "received {received} broadcast tokens, expected {words}");
+    ensure!(
+        received == words,
+        "received {received} broadcast tokens, expected {words}"
+    );
     println!("session: received all {words} broadcast tokens over WebSocket");
 
     let heartbeats: Vec<Heartbeat> = get_json(sink, "heartbeats", run).await?;

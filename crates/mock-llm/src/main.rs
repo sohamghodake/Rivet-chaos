@@ -63,7 +63,10 @@ fn script(config: &Config, session: &str, turn: u64) -> (Completion, Duration) {
         })
         .collect();
     let delay = rng.random_range(config.delay_ms.0..=config.delay_ms.1);
-    (Completion { reply, tool_calls }, Duration::from_millis(delay))
+    (
+        Completion { reply, tool_calls },
+        Duration::from_millis(delay),
+    )
 }
 
 async fn complete(
@@ -86,7 +89,8 @@ fn parse_delay(value: &str) -> Result<(u64, u64)> {
 async fn main() -> Result<()> {
     let addr = env::var("MOCK_LLM_ADDR").unwrap_or_else(|_| "0.0.0.0:6511".into());
     let seed = env::var("MOCK_LLM_SEED").map_or(Ok(42), |value| value.parse())?;
-    let delay_ms = env::var("MOCK_LLM_DELAY_MS").map_or(Ok((20, 100)), |value| parse_delay(&value))?;
+    let delay_ms =
+        env::var("MOCK_LLM_DELAY_MS").map_or(Ok((20, 100)), |value| parse_delay(&value))?;
 
     let app = Router::new()
         .route("/health", get(|| async { "ok" }))

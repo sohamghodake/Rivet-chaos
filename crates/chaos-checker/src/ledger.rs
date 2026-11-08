@@ -33,7 +33,13 @@ pub(crate) fn check(calls: &[Call]) -> LedgerChecks {
     for call in calls {
         match call.op {
             Op::Append { actor, op_id, .. } => {
-                appends.insert(op_id, Append { actor, outcome: call.outcome });
+                appends.insert(
+                    op_id,
+                    Append {
+                        actor,
+                        outcome: call.outcome,
+                    },
+                );
                 let last = last_append_invoke.entry(actor).or_default();
                 *last = (*last).max(call.invoke_seq);
             }
@@ -41,7 +47,9 @@ pub(crate) fn check(calls: &[Call]) -> LedgerChecks {
                 last_append_invoke.entry(actor).or_default();
                 // The ledger's final read is the successful read that finished last.
                 if let (Outcome::Ok, Some(done_ns)) = (call.outcome, call.done_ns)
-                    && final_reads.get(actor.as_str()).is_none_or(|(latest, _)| done_ns >= *latest)
+                    && final_reads
+                        .get(actor.as_str())
+                        .is_none_or(|(latest, _)| done_ns >= *latest)
                 {
                     let read = Read {
                         invoke_seq: call.invoke_seq,
@@ -58,7 +66,11 @@ pub(crate) fn check(calls: &[Call]) -> LedgerChecks {
     let final_reads: HashMap<&str, Read> = final_reads
         .into_iter()
         .map(|(actor, (_, read))| (actor, read))
-        .filter(|(actor, read)| last_append_invoke.get(actor).is_none_or(|&last| read.invoke_seq > last))
+        .filter(|(actor, read)| {
+            last_append_invoke
+                .get(actor)
+                .is_none_or(|&last| read.invoke_seq > last)
+        })
         .collect();
     let unreadable: BTreeSet<&str> = last_append_invoke
         .keys()
@@ -74,7 +86,10 @@ pub(crate) fn check(calls: &[Call]) -> LedgerChecks {
         no_phantoms(&appends, &ordered, &unreadable),
         no_duplicates(&ordered, &unreadable),
     ];
-    if calls.iter().any(|call| matches!(call.op, Op::Read { .. }) && call.outcome == Outcome::Ok) {
+    if calls
+        .iter()
+        .any(|call| matches!(call.op, Op::Read { .. }) && call.outcome == Outcome::Ok)
+    {
         invariants.push(visibility(calls));
     }
     LedgerChecks {
@@ -96,8 +111,10 @@ fn durability(
     let mut checked = 0;
     let mut unchecked = false;
     let mut violations = Vec::new();
-    let mut acknowledged: Vec<(&&str, &Append)> =
-        appends.iter().filter(|(_, append)| append.outcome == Outcome::Ok).collect();
+    let mut acknowledged: Vec<(&&str, &Append)> = appends
+        .iter()
+        .filter(|(_, append)| append.outcome == Outcome::Ok)
+        .collect();
     acknowledged.sort_by_key(|(op_id, _)| **op_id);
     for (op_id, append) in acknowledged {
         let Some(read) = read_sets.get(append.actor) else {
@@ -106,7 +123,10 @@ fn durability(
         };
         checked += 1;
         if !read.contains(*op_id) {
-            violations.push(format!("{op_id} was acknowledged but is missing from {}", append.actor));
+            violations.push(format!(
+                "{op_id} was acknowledged but is missing from {}",
+                append.actor
+            ));
         }
     }
     InvariantResult {
@@ -131,13 +151,16 @@ fn no_phantoms(
             checked += 1;
             match appends.get(op_id.as_str()) {
                 None => violations.push(format!("{op_id} is in {actor} but was never appended")),
-                Some(append) if append.actor != **actor => {
-                    violations.push(format!("{op_id} is in {actor} but was appended to {}", append.actor))
-                }
+                Some(append) if append.actor != **actor => violations.push(format!(
+                    "{op_id} is in {actor} but was appended to {}",
+                    append.actor
+                )),
                 Some(Append {
                     outcome: Outcome::Fail(error),
                     ..
-                }) => violations.push(format!("{op_id} is in {actor} although its call failed: {error}")),
+                }) => violations.push(format!(
+                    "{op_id} is in {actor} although its call failed: {error}"
+                )),
                 Some(_) => {}
             }
         }
@@ -181,8 +204,13 @@ fn visibility(calls: &[Call]) -> InvariantResult {
     // Per ledger, acknowledged appends in the order they were acknowledged.
     let mut acknowledged: HashMap<&str, Vec<(u64, &str)>> = HashMap::new();
     for call in calls {
-        if let (Op::Append { actor, op_id, .. }, Outcome::Ok, Some(done_ns)) = (call.op, call.outcome, call.done_ns) {
-            acknowledged.entry(actor).or_default().push((done_ns, op_id));
+        if let (Op::Append { actor, op_id, .. }, Outcome::Ok, Some(done_ns)) =
+            (call.op, call.outcome, call.done_ns)
+        {
+            acknowledged
+                .entry(actor)
+                .or_default()
+                .push((done_ns, op_id));
         }
     }
     for appends in acknowledged.values_mut() {
@@ -196,11 +224,19 @@ fn visibility(calls: &[Call]) -> InvariantResult {
             continue;
         };
         checked += 1;
-        let seen: HashSet<&str> = call.op_ids.unwrap_or_default().iter().map(String::as_str).collect();
+        let seen: HashSet<&str> = call
+            .op_ids
+            .unwrap_or_default()
+            .iter()
+            .map(String::as_str)
+            .collect();
         let earlier = acknowledged.get(actor.as_str()).map_or(&[][..], |appends| {
             &appends[..appends.partition_point(|(done_ns, _)| *done_ns < call.invoke_ns)]
         });
-        let missing: Vec<&(u64, &str)> = earlier.iter().filter(|(_, op_id)| !seen.contains(op_id)).collect();
+        let missing: Vec<&(u64, &str)> = earlier
+            .iter()
+            .filter(|(_, op_id)| !seen.contains(op_id))
+            .collect();
         if missing.is_empty() {
             continue;
         }

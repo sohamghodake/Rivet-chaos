@@ -175,7 +175,11 @@ fn faults(events: &[Event]) -> Vec<FaultExport> {
     let mut faults: Vec<FaultExport> = Vec::new();
     for event in events {
         match &event.body {
-            Body::FaultStart { fault, target, network } => faults.push(FaultExport {
+            Body::FaultStart {
+                fault,
+                target,
+                network,
+            } => faults.push(FaultExport {
                 fault: *fault,
                 target: target.clone(),
                 network: *network,
@@ -183,10 +187,9 @@ fn faults(events: &[Event]) -> Vec<FaultExport> {
                 heal_s: None,
             }),
             Body::FaultHeal { fault, target, .. } => {
-                if let Some(open) = faults
-                    .iter_mut()
-                    .find(|open| open.heal_s.is_none() && open.fault == *fault && open.target == *target)
-                {
+                if let Some(open) = faults.iter_mut().find(|open| {
+                    open.heal_s.is_none() && open.fault == *fault && open.target == *target
+                }) {
                     open.heal_s = Some(secs(event.mono_ns));
                 }
             }
@@ -198,9 +201,20 @@ fn faults(events: &[Event]) -> Vec<FaultExport> {
 
 fn seconds(calls: &[Call]) -> Vec<Second> {
     let mut buckets: BTreeMap<u64, (Second, Vec<f64>)> = BTreeMap::new();
-    for call in calls.iter().filter(|call| matches!(call.op, Op::Append { .. })) {
+    for call in calls
+        .iter()
+        .filter(|call| matches!(call.op, Op::Append { .. }))
+    {
         let t = call.invoke_ns / 1_000_000_000;
-        let (second, latencies) = buckets.entry(t).or_insert_with(|| (Second { t, ..Default::default() }, Vec::new()));
+        let (second, latencies) = buckets.entry(t).or_insert_with(|| {
+            (
+                Second {
+                    t,
+                    ..Default::default()
+                },
+                Vec::new(),
+            )
+        });
         match call.outcome {
             Outcome::Ok => {
                 second.acknowledged += 1;
@@ -215,7 +229,10 @@ fn seconds(calls: &[Call]) -> Vec<Second> {
     let last = buckets.keys().last().copied().unwrap_or(0);
     (0..=last)
         .map(|t| match buckets.remove(&t) {
-            None => Second { t, ..Default::default() },
+            None => Second {
+                t,
+                ..Default::default()
+            },
             Some((mut second, mut latencies)) => {
                 latencies.sort_by(f64::total_cmp);
                 if !latencies.is_empty() {
@@ -275,7 +292,10 @@ fn export_run(dir: &Path, checked: &Checked) -> (IndexEntry, RunExport) {
         })
         .collect();
     let totals = totals(&calls);
-    let run = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+    let run = dir
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let group = dir
         .parent()
         .and_then(Path::file_name)
@@ -289,11 +309,18 @@ fn export_run(dir: &Path, checked: &Checked) -> (IndexEntry, RunExport) {
         seed: header.seed,
         started_wall_ms: header.started_wall_ms,
         verdict,
-        statuses: check.invariants.iter().map(|result| (result.id, status_label(result.status))).collect(),
+        statuses: check
+            .invariants
+            .iter()
+            .map(|result| (result.id, status_label(result.status)))
+            .collect(),
         acknowledged: totals.acknowledged,
         faults: faults.len(),
         interrupted: recoveries.len(),
-        slowest_after_heal_s: recoveries.iter().map(|recovery| recovery.after_heal_s).fold(0.0, f64::max),
+        slowest_after_heal_s: recoveries
+            .iter()
+            .map(|recovery| recovery.after_heal_s)
+            .fold(0.0, f64::max),
     };
     let export = RunExport {
         run,
@@ -314,7 +341,12 @@ fn export_run(dir: &Path, checked: &Checked) -> (IndexEntry, RunExport) {
                 status: status_label(result.status),
                 checked: result.checked,
                 violation_count: result.violations.len(),
-                violations: result.violations.iter().take(VIOLATIONS_KEPT).cloned().collect(),
+                violations: result
+                    .violations
+                    .iter()
+                    .take(VIOLATIONS_KEPT)
+                    .cloned()
+                    .collect(),
                 notes: result.notes.clone(),
             })
             .collect(),
@@ -331,10 +363,16 @@ pub fn write(dirs: &[PathBuf], out: &Path) -> Result<()> {
     fs::create_dir_all(&runs_dir).with_context(|| format!("create {}", runs_dir.display()))?;
     let mut index = Vec::new();
     for dir in run_dirs(dirs)? {
-        match recheck(&archived(&dir, "history.jsonl"), &archived(&dir, "sink.json")) {
+        match recheck(
+            &archived(&dir, "history.jsonl"),
+            &archived(&dir, "sink.json"),
+        ) {
             Ok(checked) => {
                 let (entry, export) = export_run(&dir, &checked);
-                fs::write(runs_dir.join(format!("{}.json", entry.run)), serde_json::to_vec(&export)?)?;
+                fs::write(
+                    runs_dir.join(format!("{}.json", entry.run)),
+                    serde_json::to_vec(&export)?,
+                )?;
                 index.push(entry);
             }
             Err(error) => eprintln!("rivet-chaos: skipping {}: {error:#}", dir.display()),
@@ -342,7 +380,11 @@ pub fn write(dirs: &[PathBuf], out: &Path) -> Result<()> {
     }
     index.sort_by_key(|entry| entry.started_wall_ms);
     fs::write(out.join("index.json"), serde_json::to_vec(&index)?)?;
-    println!("rivet-chaos: exported {} runs to {}", index.len(), out.display());
+    println!(
+        "rivet-chaos: exported {} runs to {}",
+        index.len(),
+        out.display()
+    );
     Ok(())
 }
 

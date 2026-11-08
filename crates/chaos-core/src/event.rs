@@ -152,7 +152,10 @@ pub enum Op {
 impl Op {
     pub fn actor(&self) -> &str {
         match self {
-            Op::Append { actor, .. } | Op::Read { actor } | Op::Send { actor, .. } | Op::Turns { actor } => actor,
+            Op::Append { actor, .. }
+            | Op::Read { actor }
+            | Op::Send { actor, .. }
+            | Op::Turns { actor } => actor,
         }
     }
 }
@@ -253,7 +256,9 @@ mod tests {
             seq: 3,
             proc: Proc::Client(1),
             body: Body::Ok {
-                op: Op::Read { actor: "ledger/1".into() },
+                op: Op::Read {
+                    actor: "ledger/1".into(),
+                },
                 op_ids: Some(vec!["p0-000001".into()]),
                 turns: None,
                 duplicate: true,

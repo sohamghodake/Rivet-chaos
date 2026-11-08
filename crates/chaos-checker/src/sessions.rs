@@ -65,8 +65,12 @@ fn sessions<'a>(calls: &[Call<'a>]) -> BTreeMap<&'a str, Session<'a>> {
             Op::Turns { actor } => {
                 if let (Outcome::Ok, Some(done_ns)) = (call.outcome, call.done_ns) {
                     let session = sessions.entry(actor).or_default();
-                    if session.finished.is_none_or(|(_, latest, _)| done_ns >= latest) {
-                        session.finished = Some((call.invoke_seq, done_ns, call.turns.unwrap_or_default()));
+                    if session
+                        .finished
+                        .is_none_or(|(_, latest, _)| done_ns >= latest)
+                    {
+                        session.finished =
+                            Some((call.invoke_seq, done_ns, call.turns.unwrap_or_default()));
                     }
                 }
             }
@@ -99,7 +103,11 @@ fn without_sink(id: &'static str, name: &'static str) -> InvariantResult {
     }
 }
 
-pub(crate) fn check(calls: &[Call], faults: &[FaultWindow], sink: Option<&SinkRecords>) -> Vec<InvariantResult> {
+pub(crate) fn check(
+    calls: &[Call],
+    faults: &[FaultWindow],
+    sink: Option<&SinkRecords>,
+) -> Vec<InvariantResult> {
     let Some(sink) = sink else {
         return vec![
             without_sink("I6", "Single activation"),
@@ -121,7 +129,12 @@ fn single_activation(sink: &SinkRecords) -> InvariantResult {
     // Per session and node, the times its heartbeats were taken.
     let mut beats: BTreeMap<&str, BTreeMap<&str, Vec<u64>>> = BTreeMap::new();
     for row in &sink.heartbeats {
-        beats.entry(&row.key).or_default().entry(&row.node).or_default().push(row.sent_mono_ns);
+        beats
+            .entry(&row.key)
+            .or_default()
+            .entry(&row.node)
+            .or_default()
+            .push(row.sent_mono_ns);
     }
 
     let mut violations = Vec::new();
@@ -165,7 +178,11 @@ fn single_activation(sink: &SinkRecords) -> InvariantResult {
 
 /// I7: every acknowledged turn finishes, and each finished turn's tool calls ran
 /// once, or more often only when a fault overlapped the step. Counts tool calls.
-fn workflow_effects(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], sink: &SinkRecords) -> InvariantResult {
+fn workflow_effects(
+    sessions: &BTreeMap<&str, Session>,
+    faults: &[FaultWindow],
+    sink: &SinkRecords,
+) -> InvariantResult {
     let mut effects: BTreeMap<&str, Vec<u64>> = BTreeMap::new();
     for row in &sink.effects {
         effects.entry(&row.key).or_default().push(row.mono_ns);
@@ -179,7 +196,9 @@ fn workflow_effects(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], 
     for (actor, session) in sessions {
         let Some(finished) = session.final_turns() else {
             unchecked = true;
-            notes.push(format!("{actor} was never read after its last turn was sent, so its turns weren't checked."));
+            notes.push(format!(
+                "{actor} was never read after its last turn was sent, so its turns weren't checked."
+            ));
             continue;
         };
         let done: BTreeSet<u32> = finished.iter().map(|turn| turn.turn).collect();
@@ -187,7 +206,9 @@ fn workflow_effects(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], 
             violations.push(format!("{actor} never finished turn {turn}"));
         }
         for turn in done.iter().filter(|turn| !session.sent.contains(turn)) {
-            violations.push(format!("{actor} finished turn {turn}, which was never sent"));
+            violations.push(format!(
+                "{actor} finished turn {turn}, which was never sent"
+            ));
         }
         for turn in finished {
             for tool in 0..turn.tool_calls {
@@ -196,11 +217,16 @@ fn workflow_effects(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], 
                 let mut times = effects.get(key.as_str()).cloned().unwrap_or_default();
                 times.sort_unstable();
                 match times.as_slice() {
-                    [] => violations.push(format!("{actor} finished turn {} without calling tool-{tool}", turn.turn)),
+                    [] => violations.push(format!(
+                        "{actor} finished turn {} without calling tool-{tool}",
+                        turn.turn
+                    )),
                     [_] => {}
                     [first, .., last] => {
                         let (first, last) = (sink.history_ns(*first), sink.history_ns(*last));
-                        if fault_between(faults, first - FAULT_MARGIN_NS, last + FAULT_MARGIN_NS).is_some() {
+                        if fault_between(faults, first - FAULT_MARGIN_NS, last + FAULT_MARGIN_NS)
+                            .is_some()
+                        {
                             excused += 1;
                         } else {
                             violations.push(format!(
@@ -215,7 +241,9 @@ fn workflow_effects(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], 
         }
     }
     if excused > 0 {
-        notes.push(format!("{excused} tool calls ran more than once, each with a fault during its step."));
+        notes.push(format!(
+            "{excused} tool calls ran more than once, each with a fault during its step."
+        ));
     }
     InvariantResult {
         id: "I7",
@@ -230,11 +258,20 @@ fn workflow_effects(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], 
 /// I8: each finished turn's alarm fires, never early, and each booking fires
 /// once. A booking step that ran twice books two alarms; that is allowed only
 /// when a fault overlapped it, as for any step. Counts finished turns.
-fn alarms(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], sink: &SinkRecords) -> InvariantResult {
+fn alarms(
+    sessions: &BTreeMap<&str, Session>,
+    faults: &[FaultWindow],
+    sink: &SinkRecords,
+) -> InvariantResult {
     // Per alarm, its firings grouped by the booking they belong to.
     let mut alarms: BTreeMap<&str, BTreeMap<u64, Vec<&AlarmRow>>> = BTreeMap::new();
     for row in &sink.alarms {
-        alarms.entry(&row.key).or_default().entry(row.due_mono_ns).or_default().push(row);
+        alarms
+            .entry(&row.key)
+            .or_default()
+            .entry(row.due_mono_ns)
+            .or_default()
+            .push(row);
     }
 
     let mut checked = 0;
@@ -277,10 +314,14 @@ fn alarms(sessions: &BTreeMap<&str, Session>, faults: &[FaultWindow], sink: &Sin
             if bookings.len() > 1 {
                 let first = sink.history_ns(*bookings.keys().next().unwrap());
                 let last = sink.history_ns(*bookings.keys().last().unwrap());
-                if fault_between(faults, first - BOOKING_LEAD_NS, last + FAULT_MARGIN_NS).is_some() {
+                if fault_between(faults, first - BOOKING_LEAD_NS, last + FAULT_MARGIN_NS).is_some()
+                {
                     rebooked += 1;
                 } else {
-                    let dues: Vec<String> = bookings.keys().map(|due| secs(sink.history_ns(*due))).collect();
+                    let dues: Vec<String> = bookings
+                        .keys()
+                        .map(|due| secs(sink.history_ns(*due)))
+                        .collect();
                     violations.push(format!(
                         "alarm {key} was booked {} times, due at {}, with no fault during its booking step",
                         bookings.len(),

@@ -45,17 +45,34 @@ fn row(run: String, checked: &Checked) -> Row {
     let acknowledged = history
         .events
         .iter()
-        .filter(|event| matches!(&event.body, Body::Ok { op: Op::Append { .. }, .. }))
+        .filter(|event| {
+            matches!(
+                &event.body,
+                Body::Ok {
+                    op: Op::Append { .. },
+                    ..
+                }
+            )
+        })
         .count();
     Row {
         run,
         scenario: history.header.scenario.clone(),
         seed: history.header.seed,
         verdict: check.verdict(),
-        statuses: check.invariants.iter().map(|result| (result.id, result.status)).collect(),
+        statuses: check
+            .invariants
+            .iter()
+            .map(|result| (result.id, result.status))
+            .collect(),
         acknowledged,
         interrupted: check.recoveries.len(),
-        slowest_ns: check.recoveries.iter().map(|recovery| recovery.after_heal_ns).max().unwrap_or(0),
+        slowest_ns: check
+            .recoveries
+            .iter()
+            .map(|recovery| recovery.after_heal_ns)
+            .max()
+            .unwrap_or(0),
     }
 }
 
@@ -100,13 +117,24 @@ fn order(scenario: &str) -> (usize, &str) {
 pub fn print(dirs: &[PathBuf]) -> Result<()> {
     let mut rows = Vec::new();
     for dir in run_dirs(dirs)? {
-        let name = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
-        match recheck(&archived(&dir, "history.jsonl"), &archived(&dir, "sink.json")) {
+        let name = dir
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        match recheck(
+            &archived(&dir, "history.jsonl"),
+            &archived(&dir, "sink.json"),
+        ) {
             Ok(checked) => rows.push(row(name, &checked)),
             Err(error) => eprintln!("rivet-chaos: skipping {}: {error:#}", dir.display()),
         }
     }
-    rows.sort_by(|a, b| order(&a.scenario).cmp(&order(&b.scenario)).then(a.seed.cmp(&b.seed)).then(a.run.cmp(&b.run)));
+    rows.sort_by(|a, b| {
+        order(&a.scenario)
+            .cmp(&order(&b.scenario))
+            .then(a.seed.cmp(&b.seed))
+            .then(a.run.cmp(&b.run))
+    });
 
     let mut scenarios: Vec<(&str, Vec<&Row>)> = Vec::new();
     for row in &rows {
@@ -116,16 +144,34 @@ pub fn print(dirs: &[PathBuf]) -> Result<()> {
         }
     }
 
-    println!("| Scenario | Fault | Runs | Passed | {} | Acknowledged appends | Actors interrupted | Slowest recovery after heal |", INVARIANTS.join(" | "));
-    println!("| --- | --- | ---: | ---: |{} ---: | ---: | ---: |", " --- |".repeat(INVARIANTS.len()));
+    println!(
+        "| Scenario | Fault | Runs | Passed | {} | Acknowledged appends | Actors interrupted | Slowest recovery after heal |",
+        INVARIANTS.join(" | ")
+    );
+    println!(
+        "| --- | --- | ---: | ---: |{} ---: | ---: | ---: |",
+        " --- |".repeat(INVARIANTS.len())
+    );
     for (scenario, group) in &scenarios {
-        let fault = SCENARIOS.iter().find(|(name, _)| name == scenario).map_or("", |(_, fault)| fault);
-        let passed = group.iter().filter(|row| row.verdict == Status::Pass).count();
+        let fault = SCENARIOS
+            .iter()
+            .find(|(name, _)| name == scenario)
+            .map_or("", |(_, fault)| fault);
+        let passed = group
+            .iter()
+            .filter(|row| row.verdict == Status::Pass)
+            .count();
         let cells: Vec<String> = INVARIANTS
             .iter()
             .map(|id| {
-                let statuses: Vec<Status> = group.iter().filter_map(|row| row.statuses.get(id).copied()).collect();
-                let failed = statuses.iter().filter(|status| **status == Status::Fail).count();
+                let statuses: Vec<Status> = group
+                    .iter()
+                    .filter_map(|row| row.statuses.get(id).copied())
+                    .collect();
+                let failed = statuses
+                    .iter()
+                    .filter(|status| **status == Status::Fail)
+                    .count();
                 if statuses.is_empty() {
                     "-".into()
                 } else if failed > 0 {
@@ -147,10 +193,19 @@ pub fn print(dirs: &[PathBuf]) -> Result<()> {
         );
     }
 
-    println!("\n| Run | Seed | {} | Acknowledged appends | Actors interrupted | Slowest recovery after heal |", INVARIANTS.join(" | "));
-    println!("| --- | ---: |{} ---: | ---: | ---: |", " --- |".repeat(INVARIANTS.len()));
+    println!(
+        "\n| Run | Seed | {} | Acknowledged appends | Actors interrupted | Slowest recovery after heal |",
+        INVARIANTS.join(" | ")
+    );
+    println!(
+        "| --- | ---: |{} ---: | ---: | ---: |",
+        " --- |".repeat(INVARIANTS.len())
+    );
     for row in &rows {
-        let cells: Vec<&str> = INVARIANTS.iter().map(|id| label(row.statuses.get(id))).collect();
+        let cells: Vec<&str> = INVARIANTS
+            .iter()
+            .map(|id| label(row.statuses.get(id)))
+            .collect();
         println!(
             "| `{}` | {} | {} | {} | {} | {} |",
             row.run,

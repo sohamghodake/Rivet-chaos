@@ -17,7 +17,9 @@ use std::{
 
 use anyhow::{Context, Result, bail};
 use chaos_checker::{Settings, Status};
-use chaos_core::{AlarmRow, EffectRow, Header, HeartbeatRow, SCHEMA_VERSION, Scenario, SinkRecords};
+use chaos_core::{
+    AlarmRow, EffectRow, Header, HeartbeatRow, SCHEMA_VERSION, Scenario, SinkRecords,
+};
 use chaos_driver::{Ledgers, LoadConfig, Procs, SessionConfig, Sessions};
 use chaos_history::Recorder;
 use chaos_nemesis::Nemesis;
@@ -39,11 +41,22 @@ const WARM_UP: Duration = Duration::from_secs(180);
 /// After the last session finishes, time for its follow-up alarm to fire.
 const ALARM_GRACE: Duration = Duration::from_secs(10);
 const SERVICES: [&str; 9] = [
-    "engine-1", "engine-2", "engine-3", "haproxy", "s3", "node-a", "node-b", "effects-sink", "mock-llm",
+    "engine-1",
+    "engine-2",
+    "engine-3",
+    "haproxy",
+    "s3",
+    "node-a",
+    "node-b",
+    "effects-sink",
+    "mock-llm",
 ];
 
 #[derive(Parser)]
-#[command(name = "rivet-chaos", about = "Fault injection and correctness checks for Rivet")]
+#[command(
+    name = "rivet-chaos",
+    about = "Fault injection and correctness checks for Rivet"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -118,13 +131,25 @@ fn shell(program: &str, args: &[&str], envs: &[(&str, String)]) -> Result<()> {
 fn gzip(paths: &[PathBuf]) -> Result<()> {
     let mut args = vec!["--force".to_owned()];
     args.extend(paths.iter().map(|path| path.to_string_lossy().into_owned()));
-    shell("gzip", &args.iter().map(String::as_str).collect::<Vec<_>>(), &[])
+    shell(
+        "gzip",
+        &args.iter().map(String::as_str).collect::<Vec<_>>(),
+        &[],
+    )
 }
 
 fn compose(args: &[&str]) -> Command {
     let mut command = Command::new("docker");
     command
-        .args(["compose", "-p", PROJECT, "--project-directory", "cluster", "-f", "cluster/compose.yaml"])
+        .args([
+            "compose",
+            "-p",
+            PROJECT,
+            "--project-directory",
+            "cluster",
+            "-f",
+            "cluster/compose.yaml",
+        ])
         .args(args);
     command
 }
@@ -150,7 +175,11 @@ fn locked_version(package: &str) -> Option<String> {
     let start = lock.find(&format!("name = \"{package}\"\n"))?;
     let rest = &lock[start..];
     let line = rest.lines().find(|line| line.starts_with("version = "))?;
-    Some(line.trim_start_matches("version = ").trim_matches('"').to_owned())
+    Some(
+        line.trim_start_matches("version = ")
+            .trim_matches('"')
+            .to_owned(),
+    )
 }
 
 fn git_commit() -> String {
@@ -163,7 +192,9 @@ fn git_commit() -> String {
         .unwrap_or_else(|| "none".into())
 }
 
-async fn describe(nemesis: &Nemesis) -> Result<(BTreeMap<String, String>, BTreeMap<String, String>)> {
+async fn describe(
+    nemesis: &Nemesis,
+) -> Result<(BTreeMap<String, String>, BTreeMap<String, String>)> {
     let mut versions = BTreeMap::new();
     let engine = nemesis.container("engine-1").await?;
     let image = nemesis
@@ -189,7 +220,10 @@ async fn describe(nemesis: &Nemesis) -> Result<(BTreeMap<String, String>, BTreeM
     host.insert("CPUs".into(), info.ncpu.unwrap_or_default().to_string());
     host.insert(
         "Memory".into(),
-        format!("{:.1} GiB", info.mem_total.unwrap_or_default() as f64 / (1u64 << 30) as f64),
+        format!(
+            "{:.1} GiB",
+            info.mem_total.unwrap_or_default() as f64 / (1u64 << 30) as f64
+        ),
     );
     host.insert(
         "Docker".into(),
@@ -203,7 +237,12 @@ async fn describe(nemesis: &Nemesis) -> Result<(BTreeMap<String, String>, BTreeM
     Ok((versions, host))
 }
 
-async fn run(scenario_path: &Path, seed: Option<u64>, keep_cluster: bool, results: &Path) -> Result<Status> {
+async fn run(
+    scenario_path: &Path,
+    seed: Option<u64>,
+    keep_cluster: bool,
+    results: &Path,
+) -> Result<Status> {
     if !Path::new("cluster/compose.yaml").exists() {
         bail!("run rivet-chaos from the repository root");
     }
@@ -245,7 +284,13 @@ async fn run(scenario_path: &Path, seed: Option<u64>, keep_cluster: bool, result
 }
 
 async fn get_json<T: DeserializeOwned>(http: &reqwest::Client, path: &str) -> Result<T> {
-    Ok(http.get(format!("{SINK}/{path}")).send().await?.error_for_status()?.json().await?)
+    Ok(http
+        .get(format!("{SINK}/{path}"))
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?)
 }
 
 #[derive(Deserialize)]
@@ -269,7 +314,13 @@ async fn sink_clock_offset(http: &reqwest::Client, recorder: &Recorder) -> Resul
     Ok(best.context("no clock readings")?.1)
 }
 
-async fn drive(scenario: &Scenario, scenario_toml: &str, seed: u64, run_id: &str, dir: &Path) -> Result<Status> {
+async fn drive(
+    scenario: &Scenario,
+    scenario_toml: &str,
+    seed: u64,
+    run_id: &str,
+    dir: &Path,
+) -> Result<Status> {
     let nemesis = Nemesis::connect(PROJECT, COMPOSE_FILE, SINK)?;
     let (versions, host) = describe(&nemesis).await?;
     let client = Client::new(
@@ -328,11 +379,18 @@ async fn drive(scenario: &Scenario, scenario_toml: &str, seed: u64, run_id: &str
         stop.clone(),
     ));
     let plan = chaos_nemesis::plan(&scenario.nemesis, scenario.duration_s, seed);
-    println!("rivet-chaos: {} faults planned over {} s", plan.len(), scenario.duration_s);
+    println!(
+        "rivet-chaos: {} faults planned over {} s",
+        plan.len(),
+        scenario.duration_s
+    );
     let faults = nemesis.run(plan, recorder.clone(), started, CancellationToken::new());
 
     // Load stops once the duration is over and the last fault has healed.
-    let (faults, _) = tokio::join!(faults, tokio::time::sleep_until(started + Duration::from_secs(scenario.duration_s)));
+    let (faults, _) = tokio::join!(
+        faults,
+        tokio::time::sleep_until(started + Duration::from_secs(scenario.duration_s))
+    );
     stop.cancel();
     let load = load.await?;
     let acknowledged = turns.await?;
@@ -340,19 +398,43 @@ async fn drive(scenario: &Scenario, scenario_toml: &str, seed: u64, run_id: &str
     load?;
     let acknowledged = acknowledged?;
 
-    println!("rivet-chaos: load stopped, waiting {} s before the final reads", scenario.checks.quiesce_s);
+    println!(
+        "rivet-chaos: load stopped, waiting {} s before the final reads",
+        scenario.checks.quiesce_s
+    );
     tokio::time::sleep(Duration::from_secs(scenario.checks.quiesce_s)).await;
     let deadline = Duration::from_secs(scenario.checks.recovery_deadline_s);
     let (unread, unfinished) = tokio::join!(
-        chaos_driver::final_reads(ledgers, recorder.clone(), procs.clone(), call_timeout, deadline),
-        chaos_driver::drain_sessions(sessions.clone(), recorder.clone(), procs, acknowledged, call_timeout, deadline),
+        chaos_driver::final_reads(
+            ledgers,
+            recorder.clone(),
+            procs.clone(),
+            call_timeout,
+            deadline
+        ),
+        chaos_driver::drain_sessions(
+            sessions.clone(),
+            recorder.clone(),
+            procs,
+            acknowledged,
+            call_timeout,
+            deadline
+        ),
     );
     let (unread, unfinished) = (unread?, unfinished?);
     if !unread.is_empty() {
-        println!("rivet-chaos: {} ledgers never answered: {}", unread.len(), unread.join(", "));
+        println!(
+            "rivet-chaos: {} ledgers never answered: {}",
+            unread.len(),
+            unread.join(", ")
+        );
     }
     if !unfinished.is_empty() {
-        println!("rivet-chaos: {} sessions never finished: {}", unfinished.len(), unfinished.join(", "));
+        println!(
+            "rivet-chaos: {} sessions never finished: {}",
+            unfinished.len(),
+            unfinished.join(", ")
+        );
     }
     recorder.close()?;
 
@@ -392,7 +474,9 @@ struct Checked {
 fn recheck(history_path: &Path, sink_path: &Path) -> Result<Checked> {
     let history = chaos_history::read(history_path)?;
     let sink: Option<SinkRecords> = match sink_path.exists() {
-        true => Some(serde_json::from_str(&read_maybe_gzipped(sink_path)?).context("sink records")?),
+        true => {
+            Some(serde_json::from_str(&read_maybe_gzipped(sink_path)?).context("sink records")?)
+        }
         false => None,
     };
     let scenario = Scenario::parse(&history.header.scenario_toml)?;
@@ -400,12 +484,23 @@ fn recheck(history_path: &Path, sink_path: &Path) -> Result<Checked> {
         recovery_deadline: Duration::from_secs(scenario.checks.recovery_deadline_s),
     };
     let check = chaos_checker::check(&history.events, sink.as_ref(), &settings);
-    Ok(Checked { history, sink, check })
+    Ok(Checked {
+        history,
+        sink,
+        check,
+    })
 }
 
 fn write_report(dir: &Path, history_path: &Path, sink_path: &Path) -> Result<Status> {
-    let Checked { history, sink, check } = recheck(history_path, sink_path)?;
-    fs::write(dir.join("report.md"), chaos_report::render(&history, &check, sink.as_ref()))?;
+    let Checked {
+        history,
+        sink,
+        check,
+    } = recheck(history_path, sink_path)?;
+    fs::write(
+        dir.join("report.md"),
+        chaos_report::render(&history, &check, sink.as_ref()),
+    )?;
     for result in &check.invariants {
         println!(
             "rivet-chaos: {} {}: {:?} ({} checked, {} violations)",
@@ -422,7 +517,11 @@ fn write_report(dir: &Path, history_path: &Path, sink_path: &Path) -> Result<Sta
 /// `name`, or `name.gz`, in `dir`; the plain name if neither exists.
 fn archived(dir: &Path, name: &str) -> PathBuf {
     let gzipped = dir.join(format!("{name}.gz"));
-    if gzipped.exists() { gzipped } else { dir.join(name) }
+    if gzipped.exists() {
+        gzipped
+    } else {
+        dir.join(name)
+    }
 }
 
 fn report(run_dir: &Path) -> Result<Status> {
@@ -431,6 +530,9 @@ fn report(run_dir: &Path) -> Result<Status> {
         bail!("no history in {}", run_dir.display());
     }
     let status = write_report(run_dir, &history, &archived(run_dir, "sink.json"))?;
-    println!("rivet-chaos: report at {}", run_dir.join("report.md").display());
+    println!(
+        "rivet-chaos: report at {}",
+        run_dir.join("report.md").display()
+    );
     Ok(status)
 }

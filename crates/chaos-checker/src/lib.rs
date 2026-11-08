@@ -165,7 +165,11 @@ fn fault_windows(events: &[Event]) -> Vec<FaultWindow> {
     let mut windows: Vec<FaultWindow> = Vec::new();
     for event in events {
         match &event.body {
-            Body::FaultStart { fault, target, network } => windows.push(FaultWindow {
+            Body::FaultStart {
+                fault,
+                target,
+                network,
+            } => windows.push(FaultWindow {
                 fault: *fault,
                 target: target.clone(),
                 network: *network,
@@ -173,10 +177,9 @@ fn fault_windows(events: &[Event]) -> Vec<FaultWindow> {
                 heal_ns: None,
             }),
             Body::FaultHeal { fault, target, .. } => {
-                if let Some(window) = windows
-                    .iter_mut()
-                    .find(|window| window.heal_ns.is_none() && window.fault == *fault && window.target == *target)
-                {
+                if let Some(window) = windows.iter_mut().find(|window| {
+                    window.heal_ns.is_none() && window.fault == *fault && window.target == *target
+                }) {
                     window.heal_ns = Some(event.mono_ns);
                 }
             }

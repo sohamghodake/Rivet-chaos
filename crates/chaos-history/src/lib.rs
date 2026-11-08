@@ -189,8 +189,12 @@ mod tests {
         std::fs::remove_file(&path).unwrap();
         assert_eq!(history.header, header());
         assert_eq!(history.events.len(), 250);
-        assert!(history.events.windows(2).all(|pair| pair[0].seq + 1 == pair[1].seq
-            && pair[0].mono_ns <= pair[1].mono_ns));
+        assert!(
+            history
+                .events
+                .windows(2)
+                .all(|pair| pair[0].seq + 1 == pair[1].seq && pair[0].mono_ns <= pair[1].mono_ns)
+        );
         assert!(history.events[0].wall_ms.is_some());
         assert!(history.events[1].wall_ms.is_none());
     }

@@ -37,25 +37,44 @@ pub(crate) fn check(
 
     for (index, fault) in faults.iter().enumerate() {
         let Some(heal_ns) = fault.heal_ns else {
-            violations.push(format!("{} started at {} and never healed", fault.label(), secs(fault.start_ns)));
+            violations.push(format!(
+                "{} started at {} and never healed",
+                fault.label(),
+                secs(fault.start_ns)
+            ));
             continue;
         };
         let mut first_failure: BTreeMap<&str, u64> = BTreeMap::new();
         for call in calls {
-            let failed = matches!(call.outcome, Outcome::Fail(_) | Outcome::Info | Outcome::Pending);
-            if failed && call.invoke_ns >= fault.start_ns && call.invoke_ns <= heal_ns + AFTER_HEAL_NS {
-                let first = first_failure.entry(call.op.actor()).or_insert(call.invoke_ns);
+            let failed = matches!(
+                call.outcome,
+                Outcome::Fail(_) | Outcome::Info | Outcome::Pending
+            );
+            if failed
+                && call.invoke_ns >= fault.start_ns
+                && call.invoke_ns <= heal_ns + AFTER_HEAL_NS
+            {
+                let first = first_failure
+                    .entry(call.op.actor())
+                    .or_insert(call.invoke_ns);
                 *first = (*first).min(call.invoke_ns);
             }
         }
         for (actor, failed_ns) in first_failure {
             let answered = calls
                 .iter()
-                .filter(|call| call.op.actor() == actor && call.outcome == Outcome::Ok && call.invoke_ns >= failed_ns)
+                .filter(|call| {
+                    call.op.actor() == actor
+                        && call.outcome == Outcome::Ok
+                        && call.invoke_ns >= failed_ns
+                })
                 .filter_map(|call| call.done_ns)
                 .min();
             let Some(answered_ns) = answered else {
-                violations.push(format!("{actor} never answered again after {}", fault.label()));
+                violations.push(format!(
+                    "{actor} never answered again after {}",
+                    fault.label()
+                ));
                 continue;
             };
             let after_heal_ns = answered_ns as i64 - heal_ns as i64;

@@ -47,7 +47,9 @@ impl Procs {
 
 fn handles(client: &Client, name: &str, count: u32) -> Result<Arc<Vec<ActorHandle>>> {
     let handles = (0..count)
-        .map(|index| client.get_or_create(name, vec![index.to_string()], GetOrCreateOptions::default()))
+        .map(|index| {
+            client.get_or_create(name, vec![index.to_string()], GetOrCreateOptions::default())
+        })
         .collect::<Result<Vec<_>>>()?;
     Ok(Arc::new(handles))
 }
@@ -104,9 +106,11 @@ pub enum Outcome {
 /// Only a refused connection proves a request never left, so only that is a
 /// `fail`. Anything else might have been applied, so it's `info`.
 fn definitely_not_sent(error: &anyhow::Error) -> bool {
-    error
-        .chain()
-        .any(|cause| cause.downcast_ref::<reqwest::Error>().is_some_and(reqwest::Error::is_connect))
+    error.chain().any(|cause| {
+        cause
+            .downcast_ref::<reqwest::Error>()
+            .is_some_and(reqwest::Error::is_connect)
+    })
 }
 
 /// An error as the history keeps it, without the admin token request URLs carry.
@@ -116,7 +120,9 @@ fn describe(error: &anyhow::Error) -> String {
         None => text,
         Some(start) => {
             let value = start + "rvt-token=".len();
-            let end = text[value..].find(|c: char| !c.is_ascii_alphanumeric()).map_or(text.len(), |end| value + end);
+            let end = text[value..]
+                .find(|c: char| !c.is_ascii_alphanumeric())
+                .map_or(text.len(), |end| value + end);
             format!("{}rvt-token=…{}", &text[..start], &text[end..])
         }
     }
@@ -156,8 +162,14 @@ async fn call(
         ),
         Ok(Ok(value)) => {
             let (op_ids, turns) = match &op {
-                Op::Read { .. } => (Some(serde_json::from_value(value.clone()).context("read result")?), None),
-                Op::Turns { .. } => (None, Some(serde_json::from_value(value.clone()).context("turns result")?)),
+                Op::Read { .. } => (
+                    Some(serde_json::from_value(value.clone()).context("read result")?),
+                    None,
+                ),
+                Op::Turns { .. } => (
+                    None,
+                    Some(serde_json::from_value(value.clone()).context("turns result")?),
+                ),
                 Op::Append { .. } | Op::Send { .. } => (None, None),
             };
             let body = Body::Ok {
@@ -175,16 +187,30 @@ async fn call(
 
 /// Calls every actor until each has answered once, so a run doesn't open with
 /// the misses of a cluster that is still settling. Nothing is recorded.
-pub async fn warm_up(ledgers: &Ledgers, sessions: &Sessions, call_timeout: Duration, deadline: Duration) -> Result<()> {
+pub async fn warm_up(
+    ledgers: &Ledgers,
+    sessions: &Sessions,
+    call_timeout: Duration,
+    deadline: Duration,
+) -> Result<()> {
     let started = Instant::now();
     let mut calls = JoinSet::new();
     let actors = (0..ledgers.len())
         .map(|index| (ledger_actor(index), ledgers.handles.clone(), index, "read"))
-        .chain((0..sessions.len()).map(|index| (session_actor(index), sessions.handles.clone(), index, "turns")));
+        .chain((0..sessions.len()).map(|index| {
+            (
+                session_actor(index),
+                sessions.handles.clone(),
+                index,
+                "turns",
+            )
+        }));
     for (actor, handles, index, action) in actors {
         calls.spawn(async move {
             loop {
-                if let Ok(Ok(_)) = tokio::time::timeout(call_timeout, handles[index].action(action, vec![])).await {
+                if let Ok(Ok(_)) =
+                    tokio::time::timeout(call_timeout, handles[index].action(action, vec![])).await
+                {
                     return Ok(());
                 }
                 if started.elapsed() > deadline {
@@ -221,8 +247,13 @@ pub async fn run_load(
 ) -> Result<()> {
     let mut slots = JoinSet::new();
     for slot in 0..config.processes {
-        let (ledgers, recorder, procs, config, stop) =
-            (ledgers.clone(), recorder.clone(), procs.clone(), config.clone(), stop.clone());
+        let (ledgers, recorder, procs, config, stop) = (
+            ledgers.clone(),
+            recorder.clone(),
+            procs.clone(),
+            config.clone(),
+            stop.clone(),
+        );
         slots.spawn(async move {
             // Each slot gets its own stream of choices from the run's seed.
             let slot_seed = config.seed ^ (u64::from(slot) + 1).wrapping_mul(0x9e37_79b9_7f4a_7c15);
@@ -235,9 +266,18 @@ pub async fn run_load(
                 let actor = ledger_actor(index);
                 let outcome = if rng.random_range(0..100) < config.read_percent {
                     let op = Op::Read { actor };
-                    call(&recorder, proc, op, config.call_timeout, handle.action("read", vec![])).await?
+                    call(
+                        &recorder,
+                        proc,
+                        op,
+                        config.call_timeout,
+                        handle.action("read", vec![]),
+                    )
+                    .await?
                 } else {
-                    let Proc::Client(id) = proc else { unreachable!() };
+                    let Proc::Client(id) = proc else {
+                        unreachable!()
+                    };
                     let op_id = format!("p{id}-{count:06}");
                     let args = vec![json!(op_id), json!(count)];
                     let op = Op::Append {
@@ -246,13 +286,22 @@ pub async fn run_load(
                         value: i64::from(count),
                     };
                     count += 1;
-                    call(&recorder, proc, op, config.call_timeout, handle.action("append", args)).await?
+                    call(
+                        &recorder,
+                        proc,
+                        op,
+                        config.call_timeout,
+                        handle.action("append", args),
+                    )
+                    .await?
                 };
                 if outcome == Outcome::Info {
                     proc = procs.next();
                     count = 0;
                 }
-                let pause = Duration::from_millis(rng.random_range(config.pacing_ms[0]..=config.pacing_ms[1]));
+                let pause = Duration::from_millis(
+                    rng.random_range(config.pacing_ms[0]..=config.pacing_ms[1]),
+                );
                 tokio::select! {
                     _ = stop.cancelled() => break,
                     _ = tokio::time::sleep(pause) => {}
@@ -286,10 +335,16 @@ pub async fn run_sessions(
 ) -> Result<Vec<Vec<u32>>> {
     let mut tasks = JoinSet::new();
     for index in 0..sessions.len() {
-        let (sessions, recorder, procs, config, stop) =
-            (sessions.clone(), recorder.clone(), procs.clone(), config.clone(), stop.clone());
+        let (sessions, recorder, procs, config, stop) = (
+            sessions.clone(),
+            recorder.clone(),
+            procs.clone(),
+            config.clone(),
+            stop.clone(),
+        );
         tasks.spawn(async move {
-            let session_seed = config.seed ^ 0x7365_7373 ^ (index as u64 + 1).wrapping_mul(0x9e37_79b9_7f4a_7c15);
+            let session_seed =
+                config.seed ^ 0x7365_7373 ^ (index as u64 + 1).wrapping_mul(0x9e37_79b9_7f4a_7c15);
             let mut rng = StdRng::seed_from_u64(session_seed);
             let handle = &sessions.handles[index];
             let mut proc = procs.next();
@@ -301,14 +356,21 @@ pub async fn run_sessions(
                     turn,
                 };
                 let message = json!({ "turn": turn, "text": format!("message {turn}") });
-                let request = async { handle.send("message", message, SendOpts::default()).await.map(|()| Value::Null) };
+                let request = async {
+                    handle
+                        .send("message", message, SendOpts::default())
+                        .await
+                        .map(|()| Value::Null)
+                };
                 match call(&recorder, proc, op, config.call_timeout, request).await? {
                     Outcome::Ok(_) => acknowledged.push(turn),
                     Outcome::Info => proc = procs.next(),
                     Outcome::Fail => {}
                 }
                 turn += 1;
-                let pause = Duration::from_millis(rng.random_range(config.turn_pacing_ms[0]..=config.turn_pacing_ms[1]));
+                let pause = Duration::from_millis(
+                    rng.random_range(config.turn_pacing_ms[0]..=config.turn_pacing_ms[1]),
+                );
                 tokio::select! {
                     _ = stop.cancelled() => break,
                     _ = tokio::time::sleep(pause) => {}
@@ -346,10 +408,21 @@ pub async fn drain_sessions(
                 let op = Op::Turns {
                     actor: session_actor(index),
                 };
-                match call(&recorder, proc, op, call_timeout, handle.action("turns", vec![])).await? {
+                match call(
+                    &recorder,
+                    proc,
+                    op,
+                    call_timeout,
+                    handle.action("turns", vec![]),
+                )
+                .await?
+                {
                     Outcome::Ok(value) => {
                         let turns: Vec<Turn> = serde_json::from_value(value)?;
-                        if expected.iter().all(|turn| turns.iter().any(|done| done.turn == *turn)) {
+                        if expected
+                            .iter()
+                            .all(|turn| turns.iter().any(|done| done.turn == *turn))
+                        {
                             return anyhow::Ok(None);
                         }
                     }
@@ -391,7 +464,15 @@ pub async fn final_reads(
                 let op = Op::Read {
                     actor: ledger_actor(index),
                 };
-                match call(&recorder, proc, op, call_timeout, handle.action("read", vec![])).await? {
+                match call(
+                    &recorder,
+                    proc,
+                    op,
+                    call_timeout,
+                    handle.action("read", vec![]),
+                )
+                .await?
+                {
                     Outcome::Ok(_) => return anyhow::Ok(None),
                     Outcome::Info => proc = procs.next(),
                     Outcome::Fail => {}
@@ -417,8 +498,13 @@ mod tests {
 
     #[test]
     fn errors_lose_the_token() {
-        let error = anyhow::anyhow!("error sending request for url (http://h/gateway?rvt-key=2&rvt-token=d5515e03&x=1)");
-        assert_eq!(describe(&error), "error sending request for url (http://h/gateway?rvt-key=2&rvt-token=…&x=1)");
+        let error = anyhow::anyhow!(
+            "error sending request for url (http://h/gateway?rvt-key=2&rvt-token=d5515e03&x=1)"
+        );
+        assert_eq!(
+            describe(&error),
+            "error sending request for url (http://h/gateway?rvt-key=2&rvt-token=…&x=1)"
+        );
         assert_eq!(describe(&anyhow::anyhow!("timed out")), "timed out");
     }
 }

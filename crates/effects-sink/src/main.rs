@@ -165,7 +165,12 @@ impl Sink {
         transaction.commit()
     }
 
-    fn record_alarm(&self, report: &AlarmReport, now_ms: i64, mono_ns: u64) -> rusqlite::Result<()> {
+    fn record_alarm(
+        &self,
+        report: &AlarmReport,
+        now_ms: i64,
+        mono_ns: u64,
+    ) -> rusqlite::Result<()> {
         self.db.lock().unwrap().execute(
             "INSERT INTO alarms (key, node, due_ms, due_mono_ns, received_ms, mono_ns)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -261,7 +266,10 @@ fn now_ms() -> i64 {
 
 /// The raw `CLOCK_MONOTONIC` reading, the clock Node's `process.hrtime` reads.
 fn mono_ns() -> u64 {
-    let mut ts = libc::timespec { tv_sec: 0, tv_nsec: 0 };
+    let mut ts = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
     // SAFETY: clock_gettime writes the timespec it is given and nothing else.
     let result = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut ts) };
     assert_eq!(result, 0, "CLOCK_MONOTONIC is always available on Linux");
@@ -278,12 +286,18 @@ fn internal(error: rusqlite::Error) -> (StatusCode, String) {
 fn router(sink: Arc<Sink>) -> Router {
     Router::new()
         .route("/health", get(|| async { "ok" }))
-        .route("/clock", get(|| async { Json(Clock { mono_ns: mono_ns() }) }))
+        .route(
+            "/clock",
+            get(|| async { Json(Clock { mono_ns: mono_ns() }) }),
+        )
         .route(
             "/effects",
             post(
-                async |State(sink): State<Arc<Sink>>, Json(report): Json<Report>| -> ApiResult<()> {
-                    sink.record_effect(&report, now_ms(), mono_ns()).map_err(internal)?;
+                async |State(sink): State<Arc<Sink>>,
+                       Json(report): Json<Report>|
+                       -> ApiResult<()> {
+                    sink.record_effect(&report, now_ms(), mono_ns())
+                        .map_err(internal)?;
                     if sink.fire(&report) {
                         tokio::time::sleep(TRIGGER_HOLD).await;
                     }
@@ -291,7 +305,9 @@ fn router(sink: Arc<Sink>) -> Router {
                 },
             )
             .get(
-                async |State(sink): State<Arc<Sink>>, Query(filter): Query<Filter>| -> ApiResult<Vec<EffectRow>> {
+                async |State(sink): State<Arc<Sink>>,
+                       Query(filter): Query<Filter>|
+                       -> ApiResult<Vec<EffectRow>> {
                     Ok(Json(sink.effects(&filter.prefix).map_err(internal)?))
                 },
             ),
@@ -299,13 +315,18 @@ fn router(sink: Arc<Sink>) -> Router {
         .route(
             "/heartbeats",
             post(
-                async |State(sink): State<Arc<Sink>>, Json(reports): Json<Vec<HeartbeatReport>>| -> ApiResult<()> {
-                    sink.record_heartbeats(&reports, now_ms()).map_err(internal)?;
+                async |State(sink): State<Arc<Sink>>,
+                       Json(reports): Json<Vec<HeartbeatReport>>|
+                       -> ApiResult<()> {
+                    sink.record_heartbeats(&reports, now_ms())
+                        .map_err(internal)?;
                     Ok(Json(()))
                 },
             )
             .get(
-                async |State(sink): State<Arc<Sink>>, Query(filter): Query<Filter>| -> ApiResult<Vec<HeartbeatRow>> {
+                async |State(sink): State<Arc<Sink>>,
+                       Query(filter): Query<Filter>|
+                       -> ApiResult<Vec<HeartbeatRow>> {
                     Ok(Json(sink.heartbeats(&filter.prefix).map_err(internal)?))
                 },
             ),
@@ -313,26 +334,35 @@ fn router(sink: Arc<Sink>) -> Router {
         .route(
             "/alarms",
             post(
-                async |State(sink): State<Arc<Sink>>, Json(report): Json<AlarmReport>| -> ApiResult<()> {
-                    sink.record_alarm(&report, now_ms(), mono_ns()).map_err(internal)?;
+                async |State(sink): State<Arc<Sink>>,
+                       Json(report): Json<AlarmReport>|
+                       -> ApiResult<()> {
+                    sink.record_alarm(&report, now_ms(), mono_ns())
+                        .map_err(internal)?;
                     Ok(Json(()))
                 },
             )
             .get(
-                async |State(sink): State<Arc<Sink>>, Query(filter): Query<Filter>| -> ApiResult<Vec<AlarmRow>> {
+                async |State(sink): State<Arc<Sink>>,
+                       Query(filter): Query<Filter>|
+                       -> ApiResult<Vec<AlarmRow>> {
                     Ok(Json(sink.alarms(&filter.prefix).map_err(internal)?))
                 },
             ),
         )
         .route(
             "/trigger",
-            get(async |State(sink): State<Arc<Sink>>, Query(wait): Query<TriggerWait>| -> Response {
-                let fired = sink.arm();
-                match tokio::time::timeout(Duration::from_secs(wait.timeout_s), fired).await {
-                    Ok(Ok(report)) => Json(report).into_response(),
-                    _ => StatusCode::NO_CONTENT.into_response(),
-                }
-            }),
+            get(
+                async |State(sink): State<Arc<Sink>>,
+                       Query(wait): Query<TriggerWait>|
+                       -> Response {
+                    let fired = sink.arm();
+                    match tokio::time::timeout(Duration::from_secs(wait.timeout_s), fired).await {
+                        Ok(Ok(report)) => Json(report).into_response(),
+                        _ => StatusCode::NO_CONTENT.into_response(),
+                    }
+                },
+            ),
         )
         .with_state(sink)
 }
@@ -392,10 +422,14 @@ mod tests {
             node: "node-b".into(),
             sent_mono_ns,
         };
-        sink.record_heartbeats(&[beat(1_000), beat(251_000)], 99).unwrap();
+        sink.record_heartbeats(&[beat(1_000), beat(251_000)], 99)
+            .unwrap();
 
         let rows = sink.heartbeats("3").unwrap();
-        assert_eq!(rows.iter().map(|row| row.sent_mono_ns).collect::<Vec<_>>(), [1_000, 251_000]);
+        assert_eq!(
+            rows.iter().map(|row| row.sent_mono_ns).collect::<Vec<_>>(),
+            [1_000, 251_000]
+        );
         assert!(sink.effects("").unwrap().is_empty());
     }
 

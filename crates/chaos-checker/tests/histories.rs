@@ -6,7 +6,9 @@ use chaos_checker::{CheckReport, Settings, Status, check};
 use chaos_core::{AlarmRow, Body, EffectRow, Event, HeartbeatRow, SinkRecords, Turn};
 
 fn fixture(name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/histories").join(name)
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/histories")
+        .join(name)
 }
 
 fn events(name: &str) -> Vec<Event> {
@@ -18,15 +20,30 @@ fn check_fixture(name: &str) -> CheckReport {
 }
 
 fn status_of(report: &CheckReport, id: &str) -> Status {
-    report.invariants.iter().find(|result| result.id == id).unwrap().status
+    report
+        .invariants
+        .iter()
+        .find(|result| result.id == id)
+        .unwrap()
+        .status
 }
 
 fn notes(report: &CheckReport, id: &str) -> Vec<String> {
-    report.invariants.iter().find(|result| result.id == id).unwrap().notes.clone()
+    report
+        .invariants
+        .iter()
+        .find(|result| result.id == id)
+        .unwrap()
+        .notes
+        .clone()
 }
 
 fn statuses(report: &CheckReport) -> Vec<(&'static str, Status)> {
-    report.invariants.iter().map(|result| (result.id, result.status)).collect()
+    report
+        .invariants
+        .iter()
+        .map(|result| (result.id, result.status))
+        .collect()
 }
 
 fn violations(report: &CheckReport, id: &str) -> Vec<String> {
@@ -65,7 +82,12 @@ fn lost_write_fails_durability_and_visibility() {
     // breaks real-time visibility.
     assert_eq!(
         statuses(&report),
-        [("I1", Status::Fail), ("I2", Status::Pass), ("I3", Status::Pass), ("I4", Status::Fail)]
+        [
+            ("I1", Status::Fail),
+            ("I2", Status::Pass),
+            ("I3", Status::Pass),
+            ("I4", Status::Fail)
+        ]
     );
     assert_eq!(
         violations(&report, "I1"),
@@ -150,11 +172,18 @@ fn recovery_is_measured_from_the_first_failure() {
         .recoveries
         .iter()
         .map(|recovery| {
-            (recovery.actor.as_str(), recovery.outage_ns as f64 / 1e9, recovery.after_heal_ns as f64 / 1e9)
+            (
+                recovery.actor.as_str(),
+                recovery.outage_ns as f64 / 1e9,
+                recovery.after_heal_ns as f64 / 1e9,
+            )
         })
         .collect();
     // ledger/0 answered while the fault was still in place; ledger/1 waited for it to heal.
-    assert_eq!(recovered, [("ledger/0", 8.5, -19.5), ("ledger/1", 30.0, 5.0)]);
+    assert_eq!(
+        recovered,
+        [("ledger/0", 8.5, -19.5), ("ledger/1", 30.0, 5.0)]
+    );
 }
 
 #[test]
@@ -195,7 +224,11 @@ fn check_sessions(sink: &SinkRecords) -> CheckReport {
 }
 
 fn effect(key: &str, mono_ns: u64) -> EffectRow {
-    EffectRow { key: key.into(), node: "node-b".into(), mono_ns }
+    EffectRow {
+        key: key.into(),
+        node: "node-b".into(),
+        mono_ns,
+    }
 }
 
 /// An alarm whose wall clock agrees with its monotonic one.
@@ -220,7 +253,14 @@ fn good_sessions_pass() {
         .map(|result| (result.id, result.status, result.checked))
         .collect();
     // One session heartbeating, three tool calls, two finished turns with alarms.
-    assert_eq!(sessions, [("I6", Status::Pass, 1), ("I7", Status::Pass, 3), ("I8", Status::Pass, 2)]);
+    assert_eq!(
+        sessions,
+        [
+            ("I6", Status::Pass, 1),
+            ("I7", Status::Pass, 3),
+            ("I8", Status::Pass, 2)
+        ]
+    );
     assert_eq!(report.verdict(), Status::Pass);
 }
 
@@ -274,7 +314,10 @@ fn tool_call_rerun_across_a_fault_is_allowed() {
     sink.effects.push(effect("0/2/tool-0", 9_000_000_000));
     let report = check_sessions(&sink);
     assert_eq!(status_of(&report, "I7"), Status::Pass);
-    assert_eq!(notes(&report, "I7"), ["1 tool calls ran more than once, each with a fault during its step."]);
+    assert_eq!(
+        notes(&report, "I7"),
+        ["1 tool calls ran more than once, each with a fault during its step."]
+    );
 }
 
 #[test]
@@ -292,8 +335,20 @@ fn unfinished_and_unsent_turns_fail_i7() {
     let events: Vec<Event> = events("sessions.jsonl")
         .into_iter()
         .map(|mut event| {
-            if let Body::Ok { turns: Some(turns), .. } = &mut event.body {
-                *turns = vec![Turn { turn: 1, tool_calls: 2 }, Turn { turn: 4, tool_calls: 0 }];
+            if let Body::Ok {
+                turns: Some(turns), ..
+            } = &mut event.body
+            {
+                *turns = vec![
+                    Turn {
+                        turn: 1,
+                        tool_calls: 2,
+                    },
+                    Turn {
+                        turn: 4,
+                        tool_calls: 0,
+                    },
+                ];
             }
             event
         })
@@ -301,7 +356,10 @@ fn unfinished_and_unsent_turns_fail_i7() {
     let report = check(&events, Some(&sink()), &Settings::default());
     assert_eq!(
         violations(&report, "I7"),
-        ["session/0 never finished turn 2", "session/0 finished turn 4, which was never sent"]
+        [
+            "session/0 never finished turn 2",
+            "session/0 finished turn 4, which was never sent"
+        ]
     );
 }
 
@@ -335,7 +393,9 @@ fn rebooking_is_allowed_only_across_a_fault() {
     sink.alarms.push(alarm("0/1", 2_900_000_000, 2_901_000_000));
     assert_eq!(
         violations(&check_sessions(&sink), "I8"),
-        ["alarm 0/1 was booked 2 times, due at 2.7 s, 2.9 s, with no fault during its booking step"]
+        [
+            "alarm 0/1 was booked 2 times, due at 2.7 s, 2.9 s, with no fault during its booking step"
+        ]
     );
 }
 

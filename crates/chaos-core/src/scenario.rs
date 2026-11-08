@@ -107,7 +107,8 @@ impl FaultSpec {
 
 impl Scenario {
     pub fn parse(text: &str) -> Result<Self, ScenarioError> {
-        let scenario: Scenario = toml::from_str(text).map_err(|error| ScenarioError(error.to_string()))?;
+        let scenario: Scenario =
+            toml::from_str(text).map_err(|error| ScenarioError(error.to_string()))?;
         scenario.validate()?;
         Ok(scenario)
     }
@@ -118,8 +119,12 @@ impl Scenario {
         if workload.ledgers == 0 || workload.processes == 0 {
             return fail("workload needs at least one ledger and one process".into());
         }
-        if workload.pacing_ms[0] > workload.pacing_ms[1] || workload.turn_pacing_ms[0] > workload.turn_pacing_ms[1] {
-            return fail("workload.pacing_ms and workload.turn_pacing_ms must be [min, max]".into());
+        if workload.pacing_ms[0] > workload.pacing_ms[1]
+            || workload.turn_pacing_ms[0] > workload.turn_pacing_ms[1]
+        {
+            return fail(
+                "workload.pacing_ms and workload.turn_pacing_ms must be [min, max]".into(),
+            );
         }
         if workload.read_percent > 100 {
             return fail("workload.read_percent can't exceed 100".into());
@@ -129,12 +134,20 @@ impl Scenario {
                 return fail(format!("nemesis {index} has no target"));
             }
             match (spec.fault, spec.network) {
-                (Fault::Disconnect, None) => return fail(format!("nemesis {index} disconnects but names no network")),
+                (Fault::Disconnect, None) => {
+                    return fail(format!("nemesis {index} disconnects but names no network"));
+                }
                 (Fault::Disconnect, Some(_)) | (_, None) => {}
-                (fault, Some(_)) => return fail(format!("nemesis {index} is a {fault}, which takes no network")),
+                (fault, Some(_)) => {
+                    return fail(format!(
+                        "nemesis {index} is a {fault}, which takes no network"
+                    ));
+                }
             }
             if spec.fault == Fault::KillInStep && workload.agent_sessions == 0 {
-                return fail(format!("nemesis {index} kills inside workflow steps, so it needs agent_sessions"));
+                return fail(format!(
+                    "nemesis {index} kills inside workflow steps, so it needs agent_sessions"
+                ));
             }
             if let Some(every) = spec.repeat_every_s
                 && every <= spec.heal_after_s
@@ -213,19 +226,43 @@ mod tests {
     #[test]
     fn disconnect_needs_exactly_its_network() {
         let disconnect = EXAMPLE.replace(r#"fault = "kill""#, r#"fault = "disconnect""#);
-        assert!(Scenario::parse(&disconnect).unwrap_err().0.contains("names no network"));
+        assert!(
+            Scenario::parse(&disconnect)
+                .unwrap_err()
+                .0
+                .contains("names no network")
+        );
         let with_network = disconnect.replace("at_s = 120", "network = \"peer\"\nat_s = 120");
-        assert_eq!(Scenario::parse(&with_network).unwrap().nemesis[0].network, Some(Network::Peer));
+        assert_eq!(
+            Scenario::parse(&with_network).unwrap().nemesis[0].network,
+            Some(Network::Peer)
+        );
         let kill_with_network = EXAMPLE.replace("at_s = 120", "network = \"peer\"\nat_s = 120");
-        assert!(Scenario::parse(&kill_with_network).unwrap_err().0.contains("takes no network"));
+        assert!(
+            Scenario::parse(&kill_with_network)
+                .unwrap_err()
+                .0
+                .contains("takes no network")
+        );
     }
 
     #[test]
     fn kill_in_step_needs_sessions() {
         let text = EXAMPLE.replace(r#"fault = "kill""#, r#"fault = "kill-in-step""#);
-        assert!(Scenario::parse(&text).unwrap_err().0.contains("agent_sessions"));
-        let text = text.replace("call_timeout_ms = 5000", "call_timeout_ms = 5000\nagent_sessions = 4");
-        assert_eq!(Scenario::parse(&text).unwrap().nemesis[0].fault, Fault::KillInStep);
+        assert!(
+            Scenario::parse(&text)
+                .unwrap_err()
+                .0
+                .contains("agent_sessions")
+        );
+        let text = text.replace(
+            "call_timeout_ms = 5000",
+            "call_timeout_ms = 5000\nagent_sessions = 4",
+        );
+        assert_eq!(
+            Scenario::parse(&text).unwrap().nemesis[0].fault,
+            Fault::KillInStep
+        );
     }
 
     #[test]
