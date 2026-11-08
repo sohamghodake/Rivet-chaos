@@ -414,3 +414,58 @@ fn alarm_early_only_by_the_monotonic_clock_is_a_note() {
     assert_eq!(status_of(&report, "I8"), Status::Pass);
     assert_eq!(notes(&report, "I8").len(), 1);
 }
+
+#[test]
+fn a_rerun_inside_a_fault_that_started_earlier_is_excused() {
+    // node-a was killed from 5 s to 8 s. Turn 2's tool ran twice, at 6.5 s and
+    // 7.5 s: the fault had started before the step, but was in place all along.
+    let mut sink = sink();
+    sink.effects.retain(|row| row.key != "0/2/tool-0");
+    sink.effects.push(effect("0/2/tool-0", 6_500_000_000));
+    sink.effects.push(effect("0/2/tool-0", 7_500_000_000));
+    assert_eq!(status_of(&check_sessions(&sink), "I7"), Status::Pass);
+
+    // The same for a booking step: two bookings, due at 7.2 s and 7.9 s.
+    let sink = sink_with_alarm_rebooked(7_200_000_000, 7_900_000_000);
+    let report = check_sessions(&sink);
+    assert_eq!(status_of(&report, "I8"), Status::Pass);
+    assert_eq!(notes(&report, "I8").len(), 1);
+}
+
+#[test]
+fn a_rerun_after_the_fault_healed_is_not_excused() {
+    // Both bookings are well after the heal at 8 s.
+    let sink = sink_with_alarm_rebooked(12_000_000_000, 15_000_000_000);
+    assert_eq!(
+        violations(&check_sessions(&sink), "I8"),
+        [
+            "alarm 0/2 was booked 2 times, due at 12.0 s, 15.0 s, with no fault during its booking step"
+        ]
+    );
+}
+
+#[test]
+fn alarm_early_only_by_the_wall_clock_is_a_note() {
+    // 20 ms early by the wall clock, 40 ms late by the monotonic one: the wall
+    // clock was stepped back between the booking and the firing.
+    let mut sink = sink();
+    sink.alarms[0] = AlarmRow {
+        received_ms: 2_680,
+        due_ms: 2_700,
+        ..alarm("0/1", 2_700_000_000, 2_740_000_000)
+    };
+    let report = check_sessions(&sink);
+    assert_eq!(status_of(&report, "I8"), Status::Pass);
+    assert_eq!(notes(&report, "I8").len(), 1);
+}
+
+/// The fixture's sink with turn 2's alarm booked twice, at these due times.
+fn sink_with_alarm_rebooked(first_due_ns: u64, second_due_ns: u64) -> SinkRecords {
+    let mut sink = sink();
+    sink.alarms.retain(|row| row.key != "0/2");
+    sink.alarms
+        .push(alarm("0/2", first_due_ns, first_due_ns + 1_000_000));
+    sink.alarms
+        .push(alarm("0/2", second_due_ns, second_due_ns + 1_000_000));
+    sink
+}

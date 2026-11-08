@@ -85,11 +85,16 @@ fn sink_key(actor: &str) -> &str {
     actor.strip_prefix("session/").unwrap_or(actor)
 }
 
-/// The first fault that started between `from_ns` and `to_ns` on the history's clock.
+/// The first fault in place at any moment between `from_ns` and `to_ns` on the
+/// history's clock. A fault that started earlier and was still in place counts:
+/// a step that runs in the middle of a long outage overlaps it. A fault that
+/// never healed lasts to the end of the run.
 fn fault_between(faults: &[FaultWindow], from_ns: i64, to_ns: i64) -> Option<&FaultWindow> {
-    faults
-        .iter()
-        .find(|fault| (from_ns..=to_ns).contains(&(fault.start_ns as i64)))
+    faults.iter().find(|fault| {
+        let start = fault.start_ns as i64;
+        let heal = fault.heal_ns.map_or(i64::MAX, |heal| heal as i64);
+        start <= to_ns && heal >= from_ns
+    })
 }
 
 fn without_sink(id: &'static str, name: &'static str) -> InvariantResult {
@@ -278,6 +283,7 @@ fn alarms(
     let mut unchecked = false;
     let mut rebooked = 0;
     let mut monotonic_early = 0;
+    let mut wall_early_only = 0;
     let mut violations = Vec::new();
     for (actor, session) in sessions {
         let Some(finished) = session.final_turns() else {
@@ -294,13 +300,19 @@ fn alarms(
             for (due, firings) in bookings {
                 for fired in firings {
                     // Rows from before the wall-clock fields existed have zeros there.
-                    if fired.due_ms > 0 && fired.received_ms + EARLY_TOLERANCE_MS < fired.due_ms {
-                        violations.push(format!(
+                    let wall_early =
+                        fired.due_ms > 0 && fired.received_ms + EARLY_TOLERANCE_MS < fired.due_ms;
+                    let mono_early = fired.mono_ns + MONOTONIC_EARLY_NS < *due;
+                    // Early by one clock only is that clock being stepped between the
+                    // booking and the firing, not the scheduler firing early.
+                    match (wall_early, mono_early) {
+                        (true, true) => violations.push(format!(
                             "alarm {key} fired {} ms before its wall-clock due time",
                             fired.due_ms - fired.received_ms
-                        ));
-                    } else if fired.mono_ns + MONOTONIC_EARLY_NS < *due {
-                        monotonic_early += 1;
+                        )),
+                        (true, false) => wall_early_only += 1,
+                        (false, true) => monotonic_early += 1,
+                        (false, false) => {}
                     }
                 }
                 if firings.len() > 1 {
@@ -340,6 +352,11 @@ fn alarms(
     if monotonic_early > 0 {
         notes.push(format!(
             "{monotonic_early} alarms fired on time by the wall clock but early by the monotonic clock, as a forward wall-clock adjustment causes."
+        ));
+    }
+    if wall_early_only > 0 {
+        notes.push(format!(
+            "{wall_early_only} alarms fired early by the wall clock but on time by the monotonic clock, as a backward wall-clock step between booking and firing causes."
         ));
     }
     InvariantResult {
